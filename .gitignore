@@ -34,3 +34,9 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Uploaded avatars (user content, not source code)
+backend/uploads/
+
+# VitePWA dev output
+frontend/dev-dist/

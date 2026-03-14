@@ -1,11 +1,13 @@
 import asyncio
 from contextlib import asynccontextmanager
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.config import settings
 from app.database import create_tables
 from app.scheduler.setup import start_scheduler, shutdown_scheduler
-from app.routers import auth, babies, reminders, logs, voice, push, expenses, analytics, sleep, sse, admin
+from app.routers import auth, babies, reminders, logs, voice, push, expenses, analytics, sleep, sse, admin, uploads
 from app.services import event_bus
 
 
@@ -33,8 +35,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for router_module in [auth, babies, reminders, logs, voice, push, expenses, analytics, sleep, sse, admin]:
+for router_module in [auth, babies, reminders, logs, voice, push, expenses, analytics, sleep, sse, admin, uploads]:
     app.include_router(router_module.router, prefix="/api")
+
+# Serve uploaded avatar files as static files
+_uploads_dir = Path("uploads/avatars")
+_uploads_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 
 @app.get("/health")

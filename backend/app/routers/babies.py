@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, require_verified
 from app.models.baby import Baby, WeightLog
 from app.models.user import User
 from app.schemas.baby import BabyIn, BabyOut, BabyPatch, WeightLogIn, WeightLogOut
@@ -22,7 +22,7 @@ def list_babies(user: User = Depends(get_current_user), db: Session = Depends(ge
 
 
 @router.post("", response_model=BabyOut, status_code=201)
-def create_baby(body: BabyIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def create_baby(body: BabyIn, user: User = Depends(require_verified), db: Session = Depends(get_db)):
     baby = Baby(household_id=user.household_id, **body.model_dump())
     db.add(baby)
     db.commit()
@@ -53,7 +53,7 @@ def get_baby(baby_id: str, user: User = Depends(get_current_user), db: Session =
 
 
 @router.patch("/{baby_id}", response_model=BabyOut)
-def patch_baby(baby_id: str, body: BabyPatch, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def patch_baby(baby_id: str, body: BabyPatch, user: User = Depends(require_verified), db: Session = Depends(get_db)):
     baby = _assert_baby(db, baby_id, user)
     for k, v in body.model_dump(exclude_none=True).items():
         setattr(baby, k, v)
@@ -74,7 +74,7 @@ def list_weight(baby_id: str, limit: int = 30,
 
 @router.post("/{baby_id}/weight", response_model=WeightLogOut, status_code=201)
 def add_weight(baby_id: str, body: WeightLogIn,
-               user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+               user: User = Depends(require_verified), db: Session = Depends(get_db)):
     _assert_baby(db, baby_id, user)
     w = WeightLog(baby_id=baby_id, logged_by=user.id, **body.model_dump())
     db.add(w)

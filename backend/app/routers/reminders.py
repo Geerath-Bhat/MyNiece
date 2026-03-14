@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, require_verified
 from app.models.reminder import Reminder
 from app.models.baby import Baby
 from app.models.user import User
@@ -36,7 +36,7 @@ def list_reminders(baby_id: str | None = None, type: str | None = None,
 
 
 @router.post("", response_model=ReminderOut, status_code=201)
-def create_reminder(body: ReminderIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def create_reminder(body: ReminderIn, user: User = Depends(require_verified), db: Session = Depends(get_db)):
     baby = db.query(Baby).get(body.baby_id)
     if not baby or baby.household_id != user.household_id:
         raise HTTPException(403, "Access denied")
@@ -58,7 +58,7 @@ def get_reminder(reminder_id: str, user: User = Depends(get_current_user), db: S
 
 @router.patch("/{reminder_id}", response_model=ReminderOut)
 def patch_reminder(reminder_id: str, body: ReminderPatch,
-                   user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+                   user: User = Depends(require_verified), db: Session = Depends(get_db)):
     r = _assert_reminder(db, reminder_id, user)
     for k, v in body.model_dump(exclude_none=True).items():
         setattr(r, k, v)
@@ -71,7 +71,7 @@ def patch_reminder(reminder_id: str, body: ReminderPatch,
 
 @router.patch("/{reminder_id}/toggle", response_model=ReminderOut)
 def toggle_reminder(reminder_id: str, body: ToggleIn,
-                    user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+                    user: User = Depends(require_verified), db: Session = Depends(get_db)):
     r = _assert_reminder(db, reminder_id, user)
     r.is_enabled = body.is_enabled
     if body.is_enabled:
@@ -83,7 +83,7 @@ def toggle_reminder(reminder_id: str, body: ToggleIn,
 
 
 @router.delete("/{reminder_id}", status_code=204)
-def delete_reminder(reminder_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def delete_reminder(reminder_id: str, user: User = Depends(require_verified), db: Session = Depends(get_db)):
     r = _assert_reminder(db, reminder_id, user)
     # Remove scheduler job
     from app.scheduler.setup import scheduler

@@ -25,3 +25,19 @@ def create_tables():
     """Create all tables (used in dev/SQLite). In production use Alembic."""
     from app.models import household, user, baby, reminder, activity_log, push_subscription, expense, voice_command, sleep_session, weekly_insight, otp_code  # noqa: F401
     Base.metadata.create_all(bind=engine)
+    # Safe column additions for SQLite (ALTER TABLE ignores existing columns via try/except)
+    _safe_add_columns()
+
+
+def _safe_add_columns():
+    """Add new columns to existing tables without Alembic (SQLite dev only)."""
+    migrations = [
+        "ALTER TABLE babies ADD COLUMN avatar_url TEXT",
+    ]
+    with engine.connect() as conn:
+        for sql in migrations:
+            try:
+                conn.execute(__import__('sqlalchemy').text(sql))
+                conn.commit()
+            except Exception:
+                pass  # Column already exists

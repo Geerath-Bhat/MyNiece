@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { Mic, MicOff, Sparkles, CheckCircle, XCircle, Volume2 } from 'lucide-react'
+import { Mic, MicOff, Sparkles, CheckCircle, XCircle, Volume2, AlertTriangle } from 'lucide-react'
 import { useVoice } from '@/hooks/useVoice'
 import { voiceApi } from '@/api/voice'
 import type { VoiceResult } from '@/api/voice'
@@ -46,7 +46,7 @@ export default function VoicePage() {
     }
   }, [baby, ttsEnabled])
 
-  const { listening, interim, supported, start, stop } = useVoice({ onResult: handleResult })
+  const { listening, interim, supported, error: micError, start, stop } = useVoice({ onResult: handleResult })
 
   const handleMic = () => {
     if (listening) stop()
@@ -94,6 +94,13 @@ export default function VoicePage() {
           : listening ? 'Listening… tap to stop'
           : 'Tap to speak'}
       </p>
+      {micError && (
+        <div className="w-full rounded-2xl p-3 flex gap-2 slide-up-2 text-left"
+          style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)' }}>
+          <AlertTriangle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+          <p className="text-xs text-red-300">{micError}</p>
+        </div>
+      )}
 
       {/* Live transcript */}
       {(listening && interim) && (

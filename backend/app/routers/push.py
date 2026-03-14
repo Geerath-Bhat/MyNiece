@@ -54,3 +54,33 @@ def test_push(user: User = Depends(get_current_user), db: Session = Depends(get_
         title="CryBaby Test", body="Push notifications are working!",
     )
     return {"ok": True, "sent_to": sent}
+
+
+@router.get("/bot-info")
+def bot_info(user: User = Depends(get_current_user)):
+    """Returns the Telegram bot username if configured, so the frontend can link to it."""
+    from app.config import settings
+    if not settings.telegram_bot_token:
+        return {"bot_username": None}
+    try:
+        import urllib.request, json as _json
+        url = f"https://api.telegram.org/bot{settings.telegram_bot_token}/getMe"
+        with urllib.request.urlopen(url, timeout=4) as r:
+            data = _json.loads(r.read())
+        return {"bot_username": data.get("result", {}).get("username")}
+    except Exception:
+        return {"bot_username": None}
+
+
+@router.post("/test-telegram")
+def test_telegram(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    from app.services.telegram_service import send_telegram_message
+    from app.config import settings
+    if not settings.telegram_bot_token:
+        raise HTTPException(400, "TELEGRAM_BOT_TOKEN not configured in backend .env")
+    if not user.telegram_chat_id:
+        raise HTTPException(400, "No Telegram chat ID saved for your account yet")
+    ok = send_telegram_message(user.telegram_chat_id, "✅ <b>CryBaby test message</b>\nTelegram notifications are working!")
+    if not ok:
+        raise HTTPException(502, "Telegram API call failed — check your bot token and chat ID")
+    return {"ok": True}

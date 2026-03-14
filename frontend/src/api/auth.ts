@@ -57,6 +57,14 @@ export const authApi = {
   patchMe: (data: { display_name?: string; timezone?: string; telegram_chat_id?: string }) =>
     api.patch<UserOut>('/auth/me', data).then((r) => r.data),
 
+  uploadAvatar: (file: File): Promise<UserOut> => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post<UserOut>('/uploads/me/avatar', form, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(r => r.data)
+  },
+
   householdMembers: () =>
     api.get<UserOut[]>('/auth/household/members').then((r) => r.data),
 

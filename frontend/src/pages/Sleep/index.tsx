@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { Moon, Sun, Loader2, Trash2 } from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { sleepApi } from '@/api/sleep'
 import type { SleepSession } from '@/api/sleep'
 import { useBaby } from '@/hooks/useBaby'
 import { formatDistanceToNow, format } from 'date-fns'
+import { parseUTC } from '@/utils/dates'
 
 function formatDuration(minutes: number | null): string {
   if (!minutes) return '—'
@@ -19,7 +19,7 @@ function ElapsedTimer({ startedAt }: { startedAt: string }) {
 
   useEffect(() => {
     const tick = () => {
-      const diff = Date.now() - new Date(startedAt).getTime()
+      const diff = Date.now() - parseUTC(startedAt).getTime()
       const h = Math.floor(diff / 3_600_000)
       const m = Math.floor((diff % 3_600_000) / 60_000)
       const s = Math.floor((diff % 60_000) / 1000)
@@ -77,15 +77,6 @@ export default function SleepPage() {
     setSessions(prev => prev.filter(s => s.id !== id))
   }
 
-  // Build chart data from completed sessions (last 7 days by calendar date)
-  const chartData = (() => {
-    const byDate: Record<string, number> = {}
-    sessions.filter(s => s.duration_minutes && s.ended_at).forEach(s => {
-      const d = format(new Date(s.started_at), 'EEE')
-      byDate[d] = (byDate[d] ?? 0) + (s.duration_minutes! / 60)
-    })
-    return Object.entries(byDate).map(([date, hours]) => ({ date, hours: +hours.toFixed(1) }))
-  })()
 
   if (loading) return <div className="flex justify-center mt-20"><Loader2 className="w-6 h-6 text-indigo-400 animate-spin" /></div>
 
@@ -101,7 +92,7 @@ export default function SleepPage() {
 
         {active ? (
           <>
-            <p className="text-xs text-slate-400">Baby is sleeping · started {formatDistanceToNow(new Date(active.started_at), { addSuffix: true })}</p>
+            <p className="text-xs text-slate-400">Baby is sleeping · started {formatDistanceToNow(parseUTC(active.started_at), { addSuffix: true })}</p>
             <ElapsedTimer startedAt={active.started_at} />
             <button
               onClick={handleEnd} disabled={acting}
@@ -125,25 +116,6 @@ export default function SleepPage() {
         )}
       </div>
 
-      {/* Sleep duration chart */}
-      {chartData.length > 0 && (
-        <div className="glass p-4 slide-up-2">
-          <p className="text-sm font-medium text-slate-300 mb-3">Hours slept per day</p>
-          <ResponsiveContainer width="100%" height={140}>
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} unit="h" />
-              <Tooltip
-                formatter={(v) => [`${v}h`, 'Sleep']}
-                contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, color: '#f1f5f9', fontSize: 12 }}
-              />
-              <Bar dataKey="hours" fill="#6366f1" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
       {/* Session history */}
       <div className="flex flex-col gap-2 slide-up-3">
         {sessions.length === 0 ? (
@@ -156,8 +128,8 @@ export default function SleepPage() {
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-slate-200">{formatDuration(s.duration_minutes)}</p>
               <p className="text-xs text-slate-500">
-                {format(new Date(s.started_at), 'dd MMM, h:mm a')}
-                {s.ended_at && ` → ${format(new Date(s.ended_at), 'h:mm a')}`}
+                {format(parseUTC(s.started_at), 'dd MMM, h:mm a')}
+                {s.ended_at && ` → ${format(parseUTC(s.ended_at), 'h:mm a')}`}
               </p>
             </div>
             {s.quality && (

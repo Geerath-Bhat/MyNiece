@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, require_verified
 from app.models.sleep_session import SleepSession
 from app.models.baby import Baby
 from app.models.user import User
@@ -51,7 +51,7 @@ def active_sleep(
 @router.post("", response_model=SleepSessionOut, status_code=201)
 def start_sleep(
     body: SleepStartIn,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_verified),
     db: Session = Depends(get_db),
 ):
     baby = _assert_baby(db, body.baby_id, user)
@@ -82,6 +82,24 @@ def start_sleep(
         "payload": SOut.model_validate(session).model_dump(mode="json"),
     })
 
+    import threading
+    _baby_id = str(body.baby_id)
+    _title = f"😴 Sleep started"
+    _body = f"Logged by {user.display_name} for {baby.name}"
+
+    def _notify_sleep_start():
+        from app.database import SessionLocal
+        from app.services.notification_service import send_notification_to_household
+        from app.services.telegram_service import send_telegram_to_household
+        _db = SessionLocal()
+        try:
+            send_notification_to_household(_db, _baby_id, _title, _body)
+            send_telegram_to_household(_db, _baby_id, _title, _body)
+        finally:
+            _db.close()
+
+    threading.Thread(target=_notify_sleep_start, daemon=True).start()
+
     return session
 
 
@@ -89,7 +107,7 @@ def start_sleep(
 def end_sleep(
     session_id: str,
     body: SleepEndIn,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_verified),
     db: Session = Depends(get_db),
 ):
     session = db.query(SleepSession).get(session_id)
@@ -121,13 +139,32 @@ def end_sleep(
         "payload": SOut.model_validate(session).model_dump(mode="json"),
     })
 
+    import threading
+    _baby_id = str(session.baby_id)
+    dur = round(session.duration_minutes or 0)
+    _title = "⏰ Sleep ended"
+    _body = f"{baby.name} slept for {dur} min · by {user.display_name}"
+
+    def _notify_sleep_end():
+        from app.database import SessionLocal
+        from app.services.notification_service import send_notification_to_household
+        from app.services.telegram_service import send_telegram_to_household
+        _db = SessionLocal()
+        try:
+            send_notification_to_household(_db, _baby_id, _title, _body)
+            send_telegram_to_household(_db, _baby_id, _title, _body)
+        finally:
+            _db.close()
+
+    threading.Thread(target=_notify_sleep_end, daemon=True).start()
+
     return session
 
 
 @router.delete("/{session_id}", status_code=204)
 def delete_sleep(
     session_id: str,
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_verified),
     db: Session = Depends(get_db),
 ):
     session = db.query(SleepSession).get(session_id)

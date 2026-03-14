@@ -15,5 +15,19 @@ export const expensesApi = {
   delete: (id: string) => api.delete(`/expenses/${id}`),
   summary: (baby_id: string, month?: string) =>
     api.get<ExpenseSummary>('/expenses/summary', { params: { baby_id, month } }).then(r => r.data),
-  export: (baby_id: string) => `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'}/api/expenses/export?baby_id=${baby_id}`,
+  exportCSV: async (baby_id: string): Promise<void> => {
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
+    const token = localStorage.getItem('crybaby_token') ?? ''
+    const resp = await fetch(`${base}/api/expenses/export?baby_id=${baby_id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!resp.ok) throw new Error('Export failed')
+    const blob = await resp.blob()
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `expenses_${baby_id}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  },
 }

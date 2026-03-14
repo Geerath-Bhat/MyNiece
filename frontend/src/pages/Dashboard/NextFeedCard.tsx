@@ -22,7 +22,7 @@ export function NextFeedCard({ lastFedAt, intervalMinutes = 150, onLogFeed }: Pr
   const [, setTick] = useState(0)
 
   useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 1000)
+    const id = setInterval(() => setTick(t => t + 1), 1000)
     return () => clearInterval(id)
   }, [])
 
@@ -31,90 +31,84 @@ export function NextFeedCard({ lastFedAt, intervalMinutes = 150, onLogFeed }: Pr
     : null
 
   const msLeft = nextFeedAt ? nextFeedAt.getTime() - Date.now() : null
-  const { h, m, s, overdue } = msLeft !== null ? formatCountdown(msLeft) : { h: '--', m: '--', s: '--', overdue: false }
+  const { h, m, s, overdue } = msLeft !== null
+    ? formatCountdown(msLeft)
+    : { h: '--', m: '--', s: '--', overdue: false }
 
   const progress = msLeft !== null
     ? Math.max(0, Math.min(1, 1 - msLeft / (intervalMinutes * 60_000)))
     : 0
 
-  // Colour shifts from green → amber → red as time passes
-  const ringColor = overdue
-    ? 'stroke-red-400'
-    : progress > 0.8
-    ? 'stroke-amber-400'
-    : 'stroke-indigo-400'
+  const circumference = 2 * Math.PI * 52
 
-  const textColor = overdue ? 'text-red-400' : progress > 0.8 ? 'text-amber-400' : 'text-indigo-400'
-
-  const circumference = 2 * Math.PI * 54   // r=54
-  const dashOffset = circumference * (1 - progress)
+  // colour: violet → fuchsia (overdue) or violet → violet (normal)
+  const strokeColor = overdue ? '#f43f5e' : progress > 0.8 ? '#e879f9' : '#a855f7'
+  const textColor = overdue ? 'text-rose-400' : progress > 0.8 ? 'text-fuchsia-400' : 'text-violet-300'
 
   return (
-    <div className="glass-strong p-5 slide-up">
+    <div className="glass-strong p-5 slide-up-1">
       <div className="flex items-center justify-between mb-4">
         <div>
           <p className="text-xs text-slate-400 uppercase tracking-widest font-medium">Next Feeding</p>
           {nextFeedAt ? (
-            <p className="text-sm text-slate-300 mt-0.5">
-              {overdue ? 'Overdue!' : `at ${nextFeedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+            <p className={`text-sm font-medium mt-0.5 ${textColor}`}>
+              {overdue ? '⚠️ Overdue!' : `at ${nextFeedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
             </p>
           ) : (
-            <p className="text-sm text-slate-500 mt-0.5">Log first feed to start</p>
+            <p className="text-sm text-slate-500 mt-0.5">Log first feed to start countdown</p>
           )}
         </div>
-        <Milk className="w-5 h-5 text-indigo-400" />
+        <div className="w-9 h-9 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(168,85,247,0.15)' }}>
+          <Milk className="w-4 h-4 text-violet-400" />
+        </div>
       </div>
 
-      {/* Circular progress + countdown */}
-      <div className="flex items-center justify-center gap-8 py-2">
-        <div className="relative w-32 h-32 flex items-center justify-center">
-          <svg className="absolute w-full h-full -rotate-90" viewBox="0 0 128 128">
-            {/* Track */}
-            <circle cx="64" cy="64" r="54" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="6" />
-            {/* Progress arc */}
+      <div className="flex items-center gap-6 py-2">
+        {/* Circular progress */}
+        <div className="relative w-28 h-28 flex items-center justify-center shrink-0">
+          <svg className="absolute w-full h-full -rotate-90" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(167,139,250,0.1)" strokeWidth="6" />
             <circle
-              cx="64" cy="64" r="54" fill="none"
+              cx="60" cy="60" r="52" fill="none"
               strokeWidth="6" strokeLinecap="round"
-              className={`transition-all duration-1000 ${ringColor}`}
+              stroke={strokeColor}
               strokeDasharray={circumference}
-              strokeDashoffset={nextFeedAt ? dashOffset : circumference}
+              strokeDashoffset={nextFeedAt ? circumference * (1 - progress) : circumference}
+              style={{ transition: 'stroke-dashoffset 1s linear, stroke 0.5s ease' }}
             />
           </svg>
-          {/* Countdown digits */}
           <div className="flex flex-col items-center z-10">
-            <span className={`text-2xl font-bold tabular-nums leading-none ${textColor}`}>
+            <span className={`text-xl font-bold tabular-nums leading-none ${textColor}`}>
               {h}:{m}
             </span>
-            <span className={`text-sm font-medium tabular-nums ${textColor}`}>{s}s</span>
-            <span className="text-xs text-slate-500 mt-0.5">remaining</span>
+            <span className={`text-sm tabular-nums font-medium ${textColor}`}>{s}s</span>
+            <span className="text-xs text-slate-600 mt-0.5">left</span>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="flex flex-col gap-3">
+        {/* Side stats */}
+        <div className="flex flex-col gap-3 flex-1">
           <div>
             <p className="text-xs text-slate-500">Last fed</p>
-            <p className="text-sm font-medium text-slate-200">
-              {lastFedAt
-                ? lastFedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                : '—'}
+            <p className="text-sm font-semibold text-slate-200">
+              {lastFedAt ? lastFedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}
             </p>
           </div>
           <div>
             <p className="text-xs text-slate-500">Interval</p>
-            <p className="text-sm font-medium text-slate-200">{intervalMinutes / 60}h</p>
+            <p className="text-sm font-semibold text-slate-200">
+              {(intervalMinutes / 60).toFixed(1)}h
+            </p>
           </div>
+          <button
+            onClick={onLogFeed}
+            className="btn-glow flex items-center justify-center gap-1.5 bg-gradient-to-r from-violet-600 to-purple-600 text-white text-xs font-semibold py-2.5 px-4 rounded-xl"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Log Feed
+          </button>
         </div>
       </div>
-
-      {/* Log button */}
-      <button
-        onClick={onLogFeed}
-        className="btn-glow mt-4 w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-3 rounded-2xl transition-colors"
-      >
-        <Plus className="w-4 h-4" />
-        Log Feed Now
-      </button>
     </div>
   )
 }

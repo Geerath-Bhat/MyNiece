@@ -14,7 +14,8 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// On 401 or 403-with-no-token, clear and redirect to login
+// On 401 or 403-with-no-token → redirect to login
+// On 403-with-token → likely "account needs verification" — surface to UI via custom error
 api.interceptors.response.use(
   (res) => res,
   (err) => {
@@ -23,6 +24,10 @@ api.interceptors.response.use(
     if (status === 401 || (status === 403 && !hasToken)) {
       localStorage.removeItem('crybaby_token')
       window.location.href = '/login'
+    }
+    // Attach the server detail message so callers can show it
+    if (err.response?.data?.detail) {
+      err.userMessage = err.response.data.detail
     }
     return Promise.reject(err)
   }

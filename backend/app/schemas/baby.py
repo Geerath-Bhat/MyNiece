@@ -24,6 +24,7 @@ class BabyIn(BaseModel):
 class BabyOut(BabyIn):
     id: str
     household_id: str
+    avatar_url: str | None = None
     created_at: datetime
     class Config: from_attributes = True
 

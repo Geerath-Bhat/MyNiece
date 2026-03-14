@@ -2,7 +2,7 @@ from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, require_verified
 from app.models.activity_log import ActivityLog
 from app.models.baby import Baby
 from app.models.user import User
@@ -38,7 +38,7 @@ def list_logs(baby_id: str, type: str | None = None,
 
 
 @router.post("", response_model=ActivityLogOut, status_code=201)
-def create_log(body: ActivityLogIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def create_log(body: ActivityLogIn, user: User = Depends(require_verified), db: Session = Depends(get_db)):
     _assert_baby(db, body.baby_id, user)
     ts = body.timestamp or datetime.now(timezone.utc)
     log = ActivityLog(
@@ -64,6 +64,32 @@ def create_log(body: ActivityLogIn, user: User = Depends(get_current_user), db: 
             "type": "activity_log",
             "payload": ActivityLogOut.model_validate(log).model_dump(mode="json"),
         })
+
+        # Build notification message
+        type_labels = {"feed": "🍼 Feed logged", "diaper": "🧷 Diaper logged", "custom": "📝 Activity logged"}
+        notif_title = type_labels.get(body.type, "📝 Activity logged")
+        notif_body_parts = [f"Logged by {user.display_name} for {baby.name}"]
+        if body.notes:
+            notif_body_parts.append(body.notes)
+        notif_body = " · ".join(notif_body_parts)
+
+        # Push + Telegram (fire-and-forget with own DB session so request session can close)
+        import threading
+        _baby_id = str(body.baby_id)
+        _title, _body = notif_title, notif_body
+
+        def _notify():
+            from app.database import SessionLocal
+            from app.services.notification_service import send_notification_to_household
+            from app.services.telegram_service import send_telegram_to_household
+            _db = SessionLocal()
+            try:
+                send_notification_to_household(_db, _baby_id, _title, _body)
+                send_telegram_to_household(_db, _baby_id, _title, _body)
+            finally:
+                _db.close()
+
+        threading.Thread(target=_notify, daemon=True).start()
 
     return log
 
@@ -101,7 +127,7 @@ def get_log(log_id: str, user: User = Depends(get_current_user), db: Session = D
 
 
 @router.delete("/{log_id}", status_code=204)
-def delete_log(log_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def delete_log(log_id: str, user: User = Depends(require_verified), db: Session = Depends(get_db)):
     log = db.query(ActivityLog).get(log_id)
     if not log:
         raise HTTPException(404)

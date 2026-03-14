@@ -85,6 +85,27 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
+    # Notify admins of the household via Telegram
+    try:
+        from app.services.telegram_service import send_telegram_message
+        admins = db.query(User).filter(
+            User.household_id == household.id,
+            User.role == "admin",
+        ).all()
+        msg = (
+            f"👶 <b>New user joined CryBaby!</b>\n"
+            f"Name: {user.display_name}\n"
+            f"Email: {_mask_email(user.email)}\n"
+            f"Household: {household.name}\n"
+            f"Role: {role}\n\n"
+            f"Open the Admin page in the app to verify them."
+        )
+        for admin in admins:
+            if admin.telegram_chat_id:
+                send_telegram_message(admin.telegram_chat_id, msg)
+    except Exception:
+        logger.exception("Failed to notify admins of new registration")
+
     token = create_access_token({"sub": user.id})
     return RegisterResponse(access_token=token, user=UserOut.model_validate(user))
 

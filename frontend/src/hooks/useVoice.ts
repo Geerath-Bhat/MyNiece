@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
 
-// Minimal shape we need from the Web Speech API
 interface SpeechRec {
   continuous: boolean
   interimResults: boolean
@@ -9,7 +8,7 @@ interface SpeechRec {
   stop(): void
   onstart: (() => void) | null
   onend: (() => void) | null
-  onerror: (() => void) | null
+  onerror: ((e: { error: string }) => void) | null
   onresult: ((e: SpeechRecResult) => void) | null
 }
 
@@ -26,6 +25,16 @@ function getSpeechRecognition(): (new () => SpeechRec) | null {
   return w['SpeechRecognition'] ?? w['webkitSpeechRecognition'] ?? null
 }
 
+// Human-readable error labels for SpeechRecognition error codes
+const ERROR_LABELS: Record<string, string> = {
+  'not-allowed': 'Microphone permission denied. Allow mic access in browser settings.',
+  'no-speech': 'No speech detected. Try speaking louder or closer to the mic.',
+  'audio-capture': 'No microphone found. Check your device.',
+  'network': 'Network error: the browser cannot reach Google speech servers. Make sure you are on a stable internet connection and the app is served over HTTPS.',
+  'aborted': '',
+  'service-not-allowed': 'Speech recognition blocked. Use HTTPS or localhost.',
+}
+
 interface UseVoiceOptions {
   onResult: (transcript: string) => void
   lang?: string
@@ -34,6 +43,7 @@ interface UseVoiceOptions {
 export function useVoice({ onResult, lang = 'en-US' }: UseVoiceOptions) {
   const [listening, setListening] = useState(false)
   const [interim, setInterim] = useState('')
+  const [error, setError] = useState('')
   const [supported] = useState(() => !!getSpeechRecognition())
   const recRef = useRef<SpeechRec | null>(null)
 
@@ -42,12 +52,19 @@ export function useVoice({ onResult, lang = 'en-US' }: UseVoiceOptions) {
     const SR = getSpeechRecognition()
     if (!SR) return
 
+    setError('')
     const rec = new SR()
-    rec.continuous = false
+    rec.continuous = true        // keep listening until user taps Stop
     rec.interimResults = true
     rec.lang = lang
+
     rec.onstart = () => setListening(true)
-    rec.onend = () => { setListening(false); setInterim('') }
+
+    rec.onend = () => {
+      setListening(false)
+      setInterim('')
+    }
+
     rec.onresult = (e) => {
       let final = '', inter = ''
       for (let i = e.resultIndex; i < e.results.length; i++) {
@@ -55,14 +72,31 @@ export function useVoice({ onResult, lang = 'en-US' }: UseVoiceOptions) {
         else inter += e.results[i][0].transcript
       }
       setInterim(inter)
-      if (final.trim()) onResult(final.trim())
+      if (final.trim()) {
+        onResult(final.trim())
+        // Stop after we get a final result so LLM can process it
+        rec.stop()
+      }
     }
-    rec.onerror = () => setListening(false)
+
+    rec.onerror = (e) => {
+      const msg = ERROR_LABELS[e.error] ?? `Speech error: ${e.error}`
+      if (msg) setError(msg)
+      setListening(false)
+      setInterim('')
+    }
+
     recRef.current = rec
-    rec.start()
+    try {
+      rec.start()
+    } catch (e) {
+      setError('Could not start microphone. Is another app using it?')
+    }
   }, [listening, supported, lang, onResult])
 
-  const stop = useCallback(() => recRef.current?.stop(), [])
+  const stop = useCallback(() => {
+    recRef.current?.stop()
+  }, [])
 
-  return { listening, interim, supported, start, stop }
+  return { listening, interim, supported, error, start, stop }
 }

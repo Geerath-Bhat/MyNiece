@@ -164,6 +164,7 @@ async def interpret(db: Session, transcript: str, baby_id: str, user_id: str, us
                 result.log_id = log.id
                 result.action_taken = "feed_logged"
                 result.success = True
+                _notify_async(baby_id, "🍼 Feed logged (voice)", f"Logged via voice for {baby.name}")
 
             case "log_diaper":
                 ts = _parse_ts(entities.get("timestamp"))
@@ -176,6 +177,7 @@ async def interpret(db: Session, transcript: str, baby_id: str, user_id: str, us
                 result.log_id = log.id
                 result.action_taken = "diaper_logged"
                 result.success = True
+                _notify_async(baby_id, "🧷 Diaper logged (voice)", f"Logged via voice for {baby.name}")
 
             case "log_custom":
                 ts = _parse_ts(entities.get("timestamp"))
@@ -187,6 +189,8 @@ async def interpret(db: Session, transcript: str, baby_id: str, user_id: str, us
                 result.log_id = log.id
                 result.action_taken = "custom_logged"
                 result.success = True
+                label = entities.get("custom_label") or "Activity"
+                _notify_async(baby_id, f"📝 {label} (voice)", f"Logged via voice for {baby.name}")
 
             case "update_reminder":
                 r = _get_reminder(db, baby_id, entities.get("reminder_type"))
@@ -271,6 +275,22 @@ def _parse_ts(ts_str: str | None) -> datetime:
         return dt
     except ValueError:
         return datetime.now(timezone.utc)
+
+
+def _notify_async(baby_id: str, title: str, body: str) -> None:
+    """Fire push + Telegram in a background thread with its own DB session."""
+    import threading
+    def _run():
+        from app.database import SessionLocal
+        from app.services.notification_service import send_notification_to_household
+        from app.services.telegram_service import send_telegram_to_household
+        _db = SessionLocal()
+        try:
+            send_notification_to_household(_db, baby_id, title, body)
+            send_telegram_to_household(_db, baby_id, title, body)
+        finally:
+            _db.close()
+    threading.Thread(target=_run, daemon=True).start()
 
 
 def _get_reminder(db: Session, baby_id: str, r_type: str | None) -> Reminder | None:

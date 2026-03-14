@@ -8,4 +8,6 @@ export const pushApi = {
   list: () => api.get<PushSub[]>('/push/subscriptions').then(r => r.data),
   unsubscribe: (id: string) => api.delete(`/push/subscribe/${id}`),
   test: () => api.post('/push/test'),
+  testTelegram: () => api.post('/push/test-telegram'),
+  botInfo: () => api.get<{ bot_username: string | null }>('/push/bot-info').then(r => r.data),
 }

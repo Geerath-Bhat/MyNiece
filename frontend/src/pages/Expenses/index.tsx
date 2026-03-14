@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Plus, DollarSign, Loader2, Trash2, Download } from 'lucide-react'
-import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { expensesApi } from '@/api/expenses'
 import type { Expense, ExpenseSummary } from '@/api/expenses'
 import { useBaby } from '@/hooks/useBaby'
 import { format } from 'date-fns'
+import { parseUTC } from '@/utils/dates'
 
 const CATEGORIES = ['diapers', 'medicine', 'products', 'doctor', 'other'] as const
 const CAT_COLORS: Record<string, string> = {
@@ -49,10 +49,6 @@ export default function ExpensesPage() {
     setExpenses(p => p.filter(e => e.id !== id))
   }
 
-  const pieData = summary
-    ? Object.entries(summary.by_category).filter(([, v]) => v > 0).map(([name, value]) => ({ name, value }))
-    : []
-
   const inputCls = 'bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-slate-100 text-sm outline-none focus:border-indigo-500/60 transition-all'
 
   if (loading) return <div className="flex justify-center mt-20"><Loader2 className="w-6 h-6 text-indigo-400 animate-spin" /></div>
@@ -63,9 +59,13 @@ export default function ExpensesPage() {
         <h1 className="text-xl font-bold text-white">Expenses</h1>
         <div className="flex gap-2">
           {baby && (
-            <a href={expensesApi.export(baby.id)} className="glass px-3 py-2 flex items-center gap-1 rounded-xl text-sm text-slate-300">
+            <button
+              onClick={() => expensesApi.exportCSV(baby.id).catch(() => alert('Export failed'))}
+              className="glass px-3 py-2 flex items-center gap-1 rounded-xl text-sm text-slate-300 hover:bg-white/10 transition-colors"
+              title="Download CSV"
+            >
               <Download className="w-4 h-4" />
-            </a>
+            </button>
           )}
           <button onClick={() => setShowForm(f => !f)} className="glass px-3 py-2 flex items-center gap-1.5 rounded-xl text-sm text-slate-300">
             <Plus className="w-4 h-4" /> Add
@@ -111,22 +111,6 @@ export default function ExpensesPage() {
         </div>
       )}
 
-      {/* Pie chart + list — side by side on lg */}
-      {pieData.length > 0 && (
-        <div className="glass p-4 slide-up-2 lg:col-span-1">
-          <p className="text-sm font-medium text-slate-300 mb-2">Breakdown</p>
-          <ResponsiveContainer width="100%" height={180}>
-            <PieChart>
-              <Pie data={pieData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" paddingAngle={3}>
-                {pieData.map((entry, i) => <Cell key={i} fill={CAT_COLORS[entry.name] ?? '#6366f1'} />)}
-              </Pie>
-              <Legend wrapperStyle={{ color: '#94a3b8', fontSize: 12 }} />
-              <Tooltip formatter={(v) => `₹${Number(v).toFixed(0)}`} contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 12, color: '#f1f5f9', fontSize: 12 }} />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-
       {/* List */}
       <div className="flex flex-col gap-2 slide-up-3">
         {expenses.length === 0 ? (
@@ -140,7 +124,7 @@ export default function ExpensesPage() {
             </div>
             <div className="text-right shrink-0">
               <p className="text-sm font-semibold text-white">₹{e.amount}</p>
-              <p className="text-xs text-slate-500">{format(new Date(e.date), 'dd MMM')}</p>
+              <p className="text-xs text-slate-500">{format(parseUTC(e.date), 'dd MMM')}</p>
             </div>
             <button onClick={() => del(e.id)} className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-red-400 transition-all ml-1">
               <Trash2 className="w-4 h-4" />

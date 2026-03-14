@@ -13,6 +13,7 @@ class Baby(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     date_of_birth: Mapped[date] = mapped_column(Date, nullable=False)
     gender: Mapped[str | None] = mapped_column(String, nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     household: Mapped["Household"] = relationship("Household", back_populates="babies")

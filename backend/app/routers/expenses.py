@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, require_verified
 from app.models.expense import Expense
 from app.models.baby import Baby
 from app.models.user import User
@@ -43,7 +43,7 @@ def list_expenses(baby_id: str, month: str | None = None, category: str | None =
 
 
 @router.post("", response_model=ExpenseOut, status_code=201)
-def create_expense(body: ExpenseIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def create_expense(body: ExpenseIn, user: User = Depends(require_verified), db: Session = Depends(get_db)):
     _assert_baby(db, body.baby_id, user)
     e = Expense(user_id=user.id, **body.model_dump())
     db.add(e)
@@ -54,7 +54,7 @@ def create_expense(body: ExpenseIn, user: User = Depends(get_current_user), db: 
 
 @router.patch("/{expense_id}", response_model=ExpenseOut)
 def patch_expense(expense_id: str, body: ExpensePatch,
-                  user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+                  user: User = Depends(require_verified), db: Session = Depends(get_db)):
     e = db.query(Expense).get(expense_id)
     if not e:
         raise HTTPException(404)
@@ -67,7 +67,7 @@ def patch_expense(expense_id: str, body: ExpensePatch,
 
 
 @router.delete("/{expense_id}", status_code=204)
-def delete_expense(expense_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def delete_expense(expense_id: str, user: User = Depends(require_verified), db: Session = Depends(get_db)):
     e = db.query(Expense).get(expense_id)
     if not e:
         raise HTTPException(404)

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Milk, Baby, Sparkles, Filter, Loader2, Trash2 } from 'lucide-react'
+import { Milk, Baby, Sparkles, Filter, Loader2, Trash2, AlertTriangle, X } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import { parseUTC } from '@/utils/dates'
 import { logsApi } from '@/api/logs'
 import type { ActivityLog } from '@/api/logs'
 import { useBaby } from '@/hooks/useBaby'
@@ -22,12 +23,52 @@ function logLabel(log: ActivityLog): string {
   return log.custom_label ?? 'Custom'
 }
 
+// ── Delete confirmation modal ─────────────────────────────────────────────────
+
+function DeleteConfirmModal({ log, onConfirm, onCancel }: {
+  log: ActivityLog
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4" onClick={onCancel}>
+      <div className="w-full max-w-sm bg-slate-900 border border-white/10 rounded-2xl p-6 flex flex-col gap-4" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-red-500/15 flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-5 h-5 text-red-400" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-white">Delete this entry?</p>
+            <p className="text-xs text-slate-400 mt-0.5">{logLabel(log)} · {formatDistanceToNow(parseUTC(log.timestamp), { addSuffix: true })}</p>
+          </div>
+          <button onClick={onCancel} className="ml-auto text-slate-600 hover:text-slate-400">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <p className="text-xs text-slate-500">This will permanently remove the log from the database. This cannot be undone.</p>
+        <div className="flex gap-3">
+          <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl bg-white/5 text-slate-300 text-sm font-medium hover:bg-white/10 transition-colors">
+            Cancel
+          </button>
+          <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-500 transition-colors">
+            Yes, Delete
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default function ActivityLogPage() {
   const { baby } = useBaby()
   const [logs, setLogs] = useState<ActivityLog[]>([])
   const [filter, setFilter] = useState('all')
   const [loading, setLoading] = useState(true)
   const [showFilter, setShowFilter] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState<ActivityLog | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (!baby) return
@@ -42,7 +83,6 @@ export default function ActivityLogPage() {
     if (event.type !== 'activity_log') return
     const incoming = event.payload as ActivityLog
     setLogs(prev => {
-      // Deduplicate by id in case this client created the log itself
       if (prev.some(l => l.id === incoming.id)) return prev
       return [incoming, ...prev]
     })
@@ -50,67 +90,86 @@ export default function ActivityLogPage() {
 
   const { connected } = useActivityFeed({ babyId: baby?.id ?? null, onEvent })
 
-  async function deleteLog(id: string) {
-    await logsApi.delete(id)
-    setLogs(prev => prev.filter(l => l.id !== id))
+  async function confirmDelete() {
+    if (!pendingDelete) return
+    setDeleting(true)
+    try {
+      await logsApi.delete(pendingDelete.id)
+      setLogs(prev => prev.filter(l => l.id !== pendingDelete.id))
+    } finally {
+      setDeleting(false)
+      setPendingDelete(null)
+    }
   }
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex items-center justify-between slide-up">
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-bold text-white">Activity Log</h1>
-          <LiveDot connected={connected} />
+    <>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center justify-between slide-up">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-bold text-white">Activity Log</h1>
+            <LiveDot connected={connected} />
+          </div>
+          <button onClick={() => setShowFilter(f => !f)}
+            className="glass px-3 py-2 flex items-center gap-1.5 rounded-xl text-sm text-slate-300">
+            <Filter className="w-4 h-4" /> Filter
+          </button>
         </div>
-        <button onClick={() => setShowFilter(f => !f)}
-          className="glass px-3 py-2 flex items-center gap-1.5 rounded-xl text-sm text-slate-300">
-          <Filter className="w-4 h-4" /> Filter
-        </button>
+
+        {showFilter && (
+          <div className="flex gap-2 slide-up">
+            {TYPES.map(t => (
+              <button key={t} onClick={() => setFilter(t)}
+                className={`flex-1 py-2 rounded-xl text-xs font-medium capitalize transition-all ${filter === t ? 'bg-indigo-600 text-white' : 'glass text-slate-400'}`}>
+                {t}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="flex justify-center mt-10"><Loader2 className="w-6 h-6 text-indigo-400 animate-spin" /></div>
+        ) : logs.length === 0 ? (
+          <div className="glass p-8 text-center text-slate-500 text-sm slide-up-1">
+            No activity yet — log your first feed from the dashboard
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2 slide-up-1">
+            {logs.map(log => {
+              const c = cfg[log.type as keyof typeof cfg] ?? cfg.custom
+              const Icon = c.icon
+              return (
+                <div key={log.id} className="glass flex items-center gap-3 px-4 py-3.5 group">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${c.bg}`}>
+                    <Icon className={`w-5 h-5 ${c.color}`} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-slate-200">{logLabel(log)}</p>
+                    {log.notes && <p className="text-xs text-slate-500 truncate">{log.notes}</p>}
+                  </div>
+                  <span className="text-xs text-slate-500 shrink-0">
+                    {formatDistanceToNow(parseUTC(log.timestamp), { addSuffix: true })}
+                  </span>
+                  <button
+                    onClick={() => setPendingDelete(log)}
+                    className="opacity-0 group-hover:opacity-100 ml-1 text-slate-600 hover:text-red-400 transition-all"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
-      {showFilter && (
-        <div className="flex gap-2 slide-up">
-          {TYPES.map(t => (
-            <button key={t} onClick={() => setFilter(t)}
-              className={`flex-1 py-2 rounded-xl text-xs font-medium capitalize transition-all ${filter === t ? 'bg-indigo-600 text-white' : 'glass text-slate-400'}`}>
-              {t}
-            </button>
-          ))}
-        </div>
+      {pendingDelete && (
+        <DeleteConfirmModal
+          log={pendingDelete}
+          onConfirm={confirmDelete}
+          onCancel={() => !deleting && setPendingDelete(null)}
+        />
       )}
-
-      {loading ? (
-        <div className="flex justify-center mt-10"><Loader2 className="w-6 h-6 text-indigo-400 animate-spin" /></div>
-      ) : logs.length === 0 ? (
-        <div className="glass p-8 text-center text-slate-500 text-sm slide-up-1">
-          No activity yet — log your first feed from the dashboard
-        </div>
-      ) : (
-        <div className="flex flex-col gap-2 slide-up-1">
-          {logs.map(log => {
-            const c = cfg[log.type as keyof typeof cfg] ?? cfg.custom
-            const Icon = c.icon
-            return (
-              <div key={log.id} className="glass flex items-center gap-3 px-4 py-3.5 group">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${c.bg}`}>
-                  <Icon className={`w-5 h-5 ${c.color}`} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-200">{logLabel(log)}</p>
-                  {log.notes && <p className="text-xs text-slate-500 truncate">{log.notes}</p>}
-                </div>
-                <span className="text-xs text-slate-500 shrink-0">
-                  {formatDistanceToNow(new Date(log.timestamp), { addSuffix: true })}
-                </span>
-                <button onClick={() => deleteLog(log.id)}
-                  className="opacity-0 group-hover:opacity-100 ml-1 text-slate-600 hover:text-red-400 transition-all">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            )
-          })}
-        </div>
-      )}
-    </div>
+    </>
   )
 }

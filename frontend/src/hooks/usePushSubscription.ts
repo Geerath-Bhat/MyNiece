@@ -8,6 +8,16 @@ function urlB64ToUint8Array(b64: string) {
   return Uint8Array.from([...raw].map(c => c.charCodeAt(0)))
 }
 
+// Wrap serviceWorker.ready with a timeout so it never hangs forever
+function swReadyWithTimeout(ms = 8000): Promise<ServiceWorkerRegistration> {
+  return Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Service worker took too long to activate')), ms)
+    ),
+  ])
+}
+
 export function usePushSubscription() {
   const [subscribed, setSubscribed] = useState(false)
   const [supported, setSupported] = useState(false)
@@ -17,8 +27,7 @@ export function usePushSubscription() {
     setSupported(ok)
     if (!ok) return
 
-    // Check if already subscribed so the Settings button reflects real state
-    navigator.serviceWorker.ready.then((reg) =>
+    swReadyWithTimeout().then((reg) =>
       reg.pushManager.getSubscription()
     ).then((sub) => {
       setSubscribed(!!sub)
@@ -27,9 +36,9 @@ export function usePushSubscription() {
 
   async function subscribe() {
     const vapidKey = import.meta.env.VITE_VAPID_PUBLIC_KEY
-    if (!vapidKey || !supported) return
+    if (!vapidKey || !supported) throw new Error('Push not supported or VAPID key missing')
 
-    const reg = await navigator.serviceWorker.ready
+    const reg = await swReadyWithTimeout(8000)
     let sub = await reg.pushManager.getSubscription()
     if (!sub) {
       sub = await reg.pushManager.subscribe({

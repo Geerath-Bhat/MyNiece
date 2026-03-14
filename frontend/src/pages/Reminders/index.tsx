@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Bell, Milk, Baby, Pill, Dumbbell, Sparkles, Plus, ChevronRight, Loader2, X } from 'lucide-react'
+import { Bell, Milk, Baby, Pill, Dumbbell, Sparkles, Plus, Loader2, X, Pencil } from 'lucide-react'
 import { remindersApi } from '@/api/reminders'
 import type { Reminder } from '@/api/reminders'
 import { useBaby } from '@/hooks/useBaby'
@@ -22,11 +22,12 @@ function formatDetail(r: Reminder): string {
   return '—'
 }
 
-// ── Add Reminder Modal ────────────────────────────────────────────────────────
+// ── Add / Edit Modal ──────────────────────────────────────────────────────────
 
-interface AddModalProps {
+interface ReminderModalProps {
   babyId: string
-  onCreated: (r: Reminder) => void
+  existing?: Reminder          // if provided → edit mode
+  onSaved: (r: Reminder) => void
   onClose: () => void
 }
 
@@ -35,12 +36,17 @@ const SCHEDULE_TYPES = [
   { label: 'Daily at fixed time', value: 'fixed' },
 ]
 
-function AddReminderModal({ babyId, onCreated, onClose }: AddModalProps) {
-  const [label, setLabel] = useState('')
-  const [type, setType] = useState('custom')
-  const [scheduleType, setScheduleType] = useState<'interval' | 'fixed'>('interval')
-  const [hours, setHours] = useState('2.5')
-  const [timeOfDay, setTimeOfDay] = useState('09:00')
+function ReminderModal({ babyId, existing, onSaved, onClose }: ReminderModalProps) {
+  const isEdit = !!existing
+  const [label, setLabel] = useState(existing?.label ?? '')
+  const [type, setType] = useState(existing?.type ?? 'custom')
+  const [scheduleType, setScheduleType] = useState<'interval' | 'fixed'>(
+    existing?.time_of_day ? 'fixed' : 'interval'
+  )
+  const [hours, setHours] = useState(
+    existing?.interval_minutes ? String(existing.interval_minutes / 60) : '2.5'
+  )
+  const [timeOfDay, setTimeOfDay] = useState(existing?.time_of_day ?? '09:00')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -49,23 +55,38 @@ function AddReminderModal({ babyId, onCreated, onClose }: AddModalProps) {
     setSaving(true)
     setError('')
     try {
-      const payload: Parameters<typeof remindersApi.create>[0] = {
-        baby_id: babyId,
-        type,
-        label: label.trim(),
-      }
-      if (scheduleType === 'interval') {
-        const mins = Math.round(parseFloat(hours) * 60)
-        if (!mins || mins < 1) { setError('Enter a valid interval'); setSaving(false); return }
-        payload.interval_minutes = mins
+      let result: Reminder
+      if (isEdit && existing) {
+        // Edit existing
+        const patch: Partial<Reminder> = { label: label.trim(), type }
+        if (scheduleType === 'interval') {
+          const mins = Math.round(parseFloat(hours) * 60)
+          if (!mins || mins < 1) { setError('Enter a valid interval'); setSaving(false); return }
+          patch.interval_minutes = mins
+          patch.time_of_day = undefined
+        } else {
+          patch.time_of_day = timeOfDay
+          patch.interval_minutes = undefined
+        }
+        result = await remindersApi.patch(existing.id, patch)
       } else {
-        payload.time_of_day = timeOfDay
+        // Create new
+        const payload: Parameters<typeof remindersApi.create>[0] = {
+          baby_id: babyId, type, label: label.trim(),
+        }
+        if (scheduleType === 'interval') {
+          const mins = Math.round(parseFloat(hours) * 60)
+          if (!mins || mins < 1) { setError('Enter a valid interval'); setSaving(false); return }
+          payload.interval_minutes = mins
+        } else {
+          payload.time_of_day = timeOfDay
+        }
+        result = await remindersApi.create(payload)
       }
-      const created = await remindersApi.create(payload)
-      onCreated(created)
+      onSaved(result)
       onClose()
     } catch {
-      setError('Failed to create reminder')
+      setError('Failed to save reminder')
     } finally {
       setSaving(false)
     }
@@ -74,11 +95,11 @@ function AddReminderModal({ babyId, onCreated, onClose }: AddModalProps) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="w-full max-w-md bg-slate-900 border border-white/10 rounded-t-3xl p-6 flex flex-col gap-4 pb-safe"
+        className="w-full max-w-md bg-slate-900 border border-white/10 rounded-t-3xl p-6 flex flex-col gap-4"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-bold text-white">New Reminder</h2>
+          <h2 className="text-base font-bold text-white">{isEdit ? 'Edit Reminder' : 'New Reminder'}</h2>
           <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-slate-400">
             <X className="w-4 h-4" />
           </button>
@@ -96,7 +117,7 @@ function AddReminderModal({ babyId, onCreated, onClose }: AddModalProps) {
           />
         </div>
 
-        {/* Type */}
+        {/* Category */}
         <div className="flex flex-col gap-1.5">
           <label className="text-xs text-slate-400">Category</label>
           <select
@@ -119,9 +140,7 @@ function AddReminderModal({ babyId, onCreated, onClose }: AddModalProps) {
               key={s.value}
               onClick={() => setScheduleType(s.value as 'interval' | 'fixed')}
               className={`flex-1 py-2 rounded-xl text-xs font-medium transition-colors ${
-                scheduleType === s.value
-                  ? 'bg-indigo-600 text-white'
-                  : 'bg-white/5 text-slate-400 hover:bg-white/10'
+                scheduleType === s.value ? 'bg-indigo-600 text-white' : 'bg-white/5 text-slate-400 hover:bg-white/10'
               }`}
             >
               {s.label}
@@ -162,7 +181,7 @@ function AddReminderModal({ babyId, onCreated, onClose }: AddModalProps) {
           className="w-full py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
-          Save Reminder
+          {isEdit ? 'Save Changes' : 'Save Reminder'}
         </button>
       </div>
     </div>
@@ -176,6 +195,7 @@ export default function RemindersPage() {
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
+  const [editing, setEditing] = useState<Reminder | null>(null)
 
   useEffect(() => {
     if (!baby) return
@@ -185,6 +205,18 @@ export default function RemindersPage() {
   async function toggle(r: Reminder) {
     const updated = await remindersApi.toggle(r.id, !r.is_enabled)
     setReminders(prev => prev.map(x => x.id === r.id ? updated : x))
+  }
+
+  function handleSaved(r: Reminder) {
+    setReminders(prev => {
+      const idx = prev.findIndex(x => x.id === r.id)
+      if (idx >= 0) {
+        const next = [...prev]
+        next[idx] = r
+        return next
+      }
+      return [r, ...prev]
+    })
   }
 
   if (loading) return (
@@ -214,7 +246,7 @@ export default function RemindersPage() {
             const cfg = TYPE_CFG[r.type] ?? TYPE_CFG.custom
             const Icon = cfg.icon
             return (
-              <div key={r.id} className="glass flex items-center gap-3 px-4 py-3.5">
+              <div key={r.id} className="glass flex items-center gap-3 px-4 py-3.5 group">
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${cfg.bg}`}>
                   <Icon className={`w-5 h-5 ${cfg.color}`} />
                 </div>
@@ -222,11 +254,19 @@ export default function RemindersPage() {
                   <p className="text-sm font-medium text-slate-200">{r.label}</p>
                   <p className="text-xs text-slate-500">{formatDetail(r)}</p>
                 </div>
+                {/* Edit button — visible on hover */}
+                <button
+                  onClick={() => setEditing(r)}
+                  className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-indigo-400 transition-all"
+                  title="Edit reminder"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                {/* Toggle switch */}
                 <button onClick={() => toggle(r)}
                   className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${r.is_enabled ? 'bg-indigo-500' : 'bg-slate-700'}`}>
                   <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${r.is_enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </button>
-                <ChevronRight className="w-4 h-4 text-slate-600 shrink-0" />
               </div>
             )
           })}
@@ -238,11 +278,22 @@ export default function RemindersPage() {
         </div>
       </div>
 
+      {/* Add modal */}
       {showAdd && baby && (
-        <AddReminderModal
+        <ReminderModal
           babyId={baby.id}
-          onCreated={r => setReminders(prev => [r, ...prev])}
+          onSaved={handleSaved}
           onClose={() => setShowAdd(false)}
+        />
+      )}
+
+      {/* Edit modal */}
+      {editing && baby && (
+        <ReminderModal
+          babyId={baby.id}
+          existing={editing}
+          onSaved={handleSaved}
+          onClose={() => setEditing(null)}
         />
       )}
     </>

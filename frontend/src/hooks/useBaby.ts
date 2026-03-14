@@ -9,6 +9,9 @@ export function useBaby() {
   const [babies, setBabies] = useState<Baby[]>([])
   const [loading, setLoading] = useState(true)
   const [noBaby, setNoBaby] = useState(false)
+  const [tick, setTick] = useState(0)
+
+  const refetch = () => setTick(t => t + 1)
 
   useEffect(() => {
     babiesApi.list().then(list => {
@@ -29,7 +32,7 @@ export function useBaby() {
       }
       // 401/403 → interceptor redirects to login, no state change needed
     }).finally(() => setLoading(false))
-  }, [activeBabyId, setActiveBabyId])
+  }, [activeBabyId, setActiveBabyId, tick])
 
-  return { baby, babies, loading, noBaby }
+  return { baby, babies, loading, noBaby, refetch }
 }

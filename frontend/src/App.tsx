@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { ToastContainer } from '@/components/ui/Toast'
 import { useAuthStore } from '@/store/authStore'
 import { AppShell } from '@/components/layout/AppShell'
 import Login from '@/pages/Auth/Login'
@@ -22,6 +23,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <ToastContainer />
       <Routes>
         {/* Public */}
         <Route path="/login" element={<Login />} />
