@@ -13,7 +13,7 @@ class Settings(BaseSettings):
 
     llm_provider: str = "anthropic"
     llm_api_key: str = ""
-    llm_model: str = "claude-sonnet-4-6"
+    llm_model: str = "claude-haiku-4-5-20251001"  # cheapest, ~$0.0001/call
 
     cors_origins: list[str] = ["http://localhost:5173"]
 

@@ -1,73 +1,48 @@
-# React + TypeScript + Vite
+# CryBaby — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Mobile-first React PWA. Works as an installable app on iOS and Android.
 
-Currently, two official plugins are available:
+## Setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+cp .env.example .env   # set VITE_API_BASE_URL
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Environment Variables
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+# .env
+VITE_API_BASE_URL=http://localhost:8000    # backend URL
+VITE_VAPID_PUBLIC_KEY=                     # from gen_vapid.py (Milestone 3)
+```
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Available Scripts
+
+| Command | Action |
+|---------|--------|
+| `npm run dev` | Start dev server at localhost:5173 |
+| `npm run build` | Production build (outputs to dist/) |
+| `npm run preview` | Preview production build locally |
+
+## PWA Install
+
+In Chrome/Safari on mobile, tap **Share → Add to Home Screen** after visiting the deployed URL.
+The app runs fullscreen with no browser chrome.
+
+## Design System
+
+- **Colors:** Indigo brand (`brand-500`) on Slate dark background
+- **Cards:** Glassmorphism (`bg-white/5 backdrop-blur border-white/10`)
+- **Motion:** Tailwind transitions + CSS keyframe animations
+- **Icons:** Lucide React
+- **Charts:** Recharts (Milestone 5)
+
+## Deployment (Netlify)
+
+```bash
+npm run build
+# Deploy dist/ to Netlify
+# Set VITE_API_BASE_URL=https://your-backend.fly.dev in Netlify env vars
 ```

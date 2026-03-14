@@ -3,18 +3,137 @@
 @tailwind utilities;
 
 @layer base {
-  * {
-    box-sizing: border-box;
-  }
+  * { box-sizing: border-box; }
 
   body {
-    @apply bg-slate-900 text-slate-100 antialiased;
+    @apply bg-slate-950 text-slate-100 antialiased;
     margin: 0;
-    /* Prevent pull-to-refresh on mobile */
     overscroll-behavior: none;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
   }
 
-  #root {
-    @apply min-h-screen flex flex-col;
-  }
+  #root { @apply min-h-screen flex flex-col; }
 }
+
+/* ── Aurora background ───────────────────────────────────────── */
+.aurora-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.aurora-bg::before,
+.aurora-bg::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.15;
+  animation: aurora-drift 12s ease-in-out infinite alternate;
+}
+
+.aurora-bg::before {
+  width: 600px; height: 600px;
+  background: radial-gradient(circle, #6366f1 0%, #8b5cf6 50%, transparent 70%);
+  top: -200px; left: -150px;
+}
+
+.aurora-bg::after {
+  width: 500px; height: 500px;
+  background: radial-gradient(circle, #06b6d4 0%, #3b82f6 50%, transparent 70%);
+  bottom: -150px; right: -100px;
+  animation-delay: -6s;
+  animation-duration: 15s;
+}
+
+@keyframes aurora-drift {
+  0%   { transform: translate(0, 0) scale(1); }
+  50%  { transform: translate(40px, 30px) scale(1.1); }
+  100% { transform: translate(-20px, 50px) scale(0.95); }
+}
+
+/* ── Glassmorphism card ──────────────────────────────────────── */
+.glass {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+}
+
+/* ── Gradient text ───────────────────────────────────────────── */
+.gradient-text {
+  background: linear-gradient(135deg, #818cf8 0%, #c084fc 50%, #67e8f9 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ── Glow button ─────────────────────────────────────────────── */
+.btn-glow {
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.btn-glow:active { transform: scale(0.96); }
+
+.btn-glow::after {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6, #06b6d4);
+  opacity: 0;
+  z-index: -1;
+  transition: opacity 0.2s ease;
+  filter: blur(8px);
+}
+
+.btn-glow:hover::after { opacity: 0.6; }
+
+/* ── Pulse ring (for mic / active states) ────────────────────── */
+@keyframes pulse-ring {
+  0%   { transform: scale(0.9); opacity: 0.8; }
+  100% { transform: scale(1.4); opacity: 0; }
+}
+
+.pulse-ring::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  animation: pulse-ring 1.5s ease-out infinite;
+}
+
+/* ── Number roll animation ───────────────────────────────────── */
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.count-up { animation: count-up 0.4s ease forwards; }
+
+/* ── Slide up entrance ───────────────────────────────────────── */
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.slide-up { animation: slide-up 0.35s ease forwards; }
+.slide-up-1 { animation: slide-up 0.35s 0.05s ease both; }
+.slide-up-2 { animation: slide-up 0.35s 0.10s ease both; }
+.slide-up-3 { animation: slide-up 0.35s 0.15s ease both; }
+.slide-up-4 { animation: slide-up 0.35s 0.20s ease both; }
+.slide-up-5 { animation: slide-up 0.35s 0.25s ease both; }
