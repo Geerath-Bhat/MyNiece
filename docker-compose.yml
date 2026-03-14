@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: crybaby
+      POSTGRES_USER: crybaby
+      POSTGRES_PASSWORD: crybaby_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U crybaby"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://crybaby:crybaby_dev@db:5432/crybaby
+      SECRET_KEY: dev-secret-change-in-production
+      CORS_ORIGINS: '["http://localhost:5173"]'
+      # Add VAPID keys and LLM_API_KEY in .env or here for local dev
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount source for hot reload in dev
+      - ./backend/app:/app/app
+
+volumes:
+  postgres_data:
