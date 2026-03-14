@@ -1,0 +1,31 @@
+app = "crybaby-api"
+primary_region = "sin"   # Singapore — change to nearest: lax, iad, lhr, fra, nrt…
+
+[build]
+  dockerfile = "backend/Dockerfile"
+
+[env]
+  PORT = "8080"
+  DATABASE_URL = "sqlite:////data/crybaby.db"
+
+[mounts]
+  source = "crybaby_data"
+  destination = "/data"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false   # keep always-on for APScheduler
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    path = "/health"
+    timeout = "5s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"

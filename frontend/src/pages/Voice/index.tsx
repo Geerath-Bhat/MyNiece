@@ -1,5 +1,9 @@
 import { useState } from 'react'
-import { Mic, MicOff, Sparkles } from 'lucide-react'
+import { Mic, MicOff, Sparkles, CheckCircle, XCircle } from 'lucide-react'
+import { useVoice } from '@/hooks/useVoice'
+import { voiceApi } from '@/api/voice'
+import type { VoiceResult } from '@/api/voice'
+import { useBaby } from '@/hooks/useBaby'
 
 const EXAMPLES = [
   '"I fed the baby at 3 PM"',
@@ -10,7 +14,31 @@ const EXAMPLES = [
 ]
 
 export default function VoicePage() {
-  const [listening, setListening] = useState(false)
+  const { baby } = useBaby()
+  const [processing, setProcessing] = useState(false)
+  const [result, setResult] = useState<VoiceResult | null>(null)
+
+  const { listening, interim, supported, start, stop } = useVoice({
+    onResult: async (transcript) => {
+      if (!baby) return
+      setProcessing(true)
+      setResult(null)
+      try {
+        const r = await voiceApi.interpret(transcript, baby.id)
+        setResult(r)
+      } catch {
+        setResult({ intent: 'error', entities: {}, action_taken: 'none',
+          response_message: 'Failed to process. Is LLM_API_KEY set?', success: false })
+      } finally {
+        setProcessing(false)
+      }
+    },
+  })
+
+  const handleMic = () => {
+    if (listening) stop()
+    else { setResult(null); start() }
+  }
 
   return (
     <div className="flex flex-col gap-5 items-center text-center">
@@ -19,7 +47,7 @@ export default function VoicePage() {
         <p className="text-sm text-slate-400">Speak naturally to log activities or update reminders</p>
       </div>
 
-      {/* Big mic button */}
+      {/* Mic button */}
       <div className="slide-up-1 relative flex items-center justify-center mt-4">
         {listening && (
           <>
@@ -27,30 +55,44 @@ export default function VoicePage() {
             <span className="absolute w-32 h-32 rounded-full bg-indigo-500/15 animate-ping" style={{ animationDelay: '0.3s' }} />
           </>
         )}
-        <button
-          onClick={() => setListening((l) => !l)}
-          className={`relative w-24 h-24 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 btn-glow
-            ${listening
-              ? 'bg-gradient-to-br from-red-500 to-pink-600 shadow-red-500/40 scale-110'
-              : 'bg-gradient-to-br from-indigo-500 to-violet-600 shadow-indigo-500/40'
-            }`}
-        >
-          {listening
-            ? <MicOff className="w-10 h-10 text-white" />
-            : <Mic className="w-10 h-10 text-white" />
-          }
+        <button onClick={handleMic} disabled={!supported || processing}
+          className={`relative w-24 h-24 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 btn-glow disabled:opacity-50
+            ${listening ? 'bg-gradient-to-br from-red-500 to-pink-600 shadow-red-500/40 scale-110'
+              : 'bg-gradient-to-br from-indigo-500 to-violet-600 shadow-indigo-500/40'}`}>
+          {processing
+            ? <span className="w-10 h-10 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+            : listening ? <MicOff className="w-10 h-10 text-white" />
+            : <Mic className="w-10 h-10 text-white" />}
         </button>
       </div>
 
       <p className="text-sm text-slate-400 slide-up-2">
-        {listening ? 'Listening… tap to stop' : 'Tap to speak'}
+        {!supported ? 'Voice not supported in this browser'
+          : processing ? 'Processing...'
+          : listening ? 'Listening… tap to stop'
+          : 'Tap to speak'}
       </p>
 
-      {/* Transcript area */}
-      {listening && (
+      {/* Live transcript */}
+      {(listening && interim) && (
         <div className="glass-strong w-full p-4 text-left slide-up-2">
-          <p className="text-xs text-slate-500 mb-1">Transcript</p>
-          <p className="text-slate-300 text-sm italic animate-pulse">Listening…</p>
+          <p className="text-xs text-slate-500 mb-1">Hearing...</p>
+          <p className="text-slate-300 text-sm italic">{interim}</p>
+        </div>
+      )}
+
+      {/* Result card */}
+      {result && (
+        <div className={`glass-strong w-full p-4 text-left slide-up ${result.success ? 'border-emerald-500/30' : 'border-red-500/30'}`}>
+          <div className="flex items-center gap-2 mb-2">
+            {result.success
+              ? <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
+              : <XCircle className="w-5 h-5 text-red-400 shrink-0" />}
+            <p className={`text-sm font-medium ${result.success ? 'text-emerald-400' : 'text-red-400'}`}>
+              {result.response_message}
+            </p>
+          </div>
+          <p className="text-xs text-slate-500">Intent: {result.intent} · Action: {result.action_taken}</p>
         </div>
       )}
 
@@ -61,13 +103,11 @@ export default function VoicePage() {
           <p className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Try saying</p>
         </div>
         <ul className="flex flex-col gap-2">
-          {EXAMPLES.map((ex) => (
+          {EXAMPLES.map(ex => (
             <li key={ex} className="text-sm text-slate-400 py-1 border-b border-white/5 last:border-0">{ex}</li>
           ))}
         </ul>
       </div>
-
-      <p className="text-xs text-slate-600 slide-up-4">AI processing activates in Milestone 4</p>
     </div>
   )
 }

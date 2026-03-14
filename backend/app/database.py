@@ -23,5 +23,5 @@ def get_db():
 
 def create_tables():
     """Create all tables (used in dev/SQLite). In production use Alembic."""
-    from app.models import household, user, baby, reminder, activity_log, push_subscription, expense, voice_command  # noqa: F401
+    from app.models import household, user, baby, reminder, activity_log, push_subscription, expense, voice_command, sleep_session, weekly_insight  # noqa: F401
     Base.metadata.create_all(bind=engine)

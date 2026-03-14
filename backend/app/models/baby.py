@@ -20,6 +20,8 @@ class Baby(Base):
     reminders: Mapped[list["Reminder"]] = relationship("Reminder", back_populates="baby", cascade="all, delete-orphan")
     activity_logs: Mapped[list["ActivityLog"]] = relationship("ActivityLog", back_populates="baby", cascade="all, delete-orphan")
     expenses: Mapped[list["Expense"]] = relationship("Expense", back_populates="baby", cascade="all, delete-orphan")
+    sleep_sessions: Mapped[list["SleepSession"]] = relationship("SleepSession", back_populates="baby", cascade="all, delete-orphan")
+    weekly_insights: Mapped[list["WeeklyInsight"]] = relationship("WeeklyInsight", back_populates="baby", cascade="all, delete-orphan")
 
 
 class WeightLog(Base):

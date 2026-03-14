@@ -7,6 +7,10 @@ import DashboardPage from '@/pages/Dashboard/index'
 import ActivityLogPage from '@/pages/ActivityLog/index'
 import RemindersPage from '@/pages/Reminders/index'
 import VoicePage from '@/pages/Voice/index'
+import SleepPage from '@/pages/Sleep/index'
+import AnalyticsPage from '@/pages/Analytics/index'
+import ExpensesPage from '@/pages/Expenses/index'
+import MorePage from '@/pages/More/index'
 import SettingsPage from '@/pages/Settings/index'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -34,7 +38,11 @@ export default function App() {
           <Route path="/log" element={<ActivityLogPage />} />
           <Route path="/reminders" element={<RemindersPage />} />
           <Route path="/voice" element={<VoicePage />} />
-          <Route path="/more" element={<SettingsPage />} />
+          <Route path="/sleep" element={<SleepPage />} />
+          <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/expenses" element={<ExpensesPage />} />
+          <Route path="/more" element={<MorePage />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Route>
 
         {/* Catch-all */}

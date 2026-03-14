@@ -1,4 +1,4 @@
-# 👶 CryBaby — Baby Care Tracker
+# CryBaby — Baby Care Tracker
 
 A mobile-first PWA for tracking feeding, diapers, and reminders — shared across 3–4 caregivers in real time.
 
@@ -8,6 +8,7 @@ A mobile-first PWA for tracking feeding, diapers, and reminders — shared acros
 CryBaby/
 ├── backend/     FastAPI + SQLAlchemy + APScheduler
 ├── frontend/    React + Vite + Tailwind (PWA)
+├── fly.toml     Fly.io backend deployment
 └── docker-compose.yml   Local dev with Postgres
 ```
 
@@ -20,7 +21,7 @@ CryBaby/
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env          # edit if needed
+cp .env.example .env          # only SECRET_KEY required
 alembic upgrade head
 uvicorn app.main:app --reload
 
@@ -39,25 +40,64 @@ docker-compose up --build
 cd frontend && npm install && npm run dev
 ```
 
-## Milestones
+## Deploy
 
-| # | Feature | Status |
-|---|---------|--------|
-| 1 | Scaffold, auth, household | ✅ Done |
-| 2 | Baby profile, activity logs, reminders, APScheduler | 🔨 Next |
-| 3 | Push notifications (VAPID + service worker) | ⏳ |
-| 4 | Voice commands (Web Speech API + Claude Haiku) | ⏳ |
-| 5 | Analytics charts + expense tracking | ⏳ |
-| 6 | PWA polish, offline queue, dark mode | ⏳ |
-| 7 | Deploy (Fly.io + Netlify) | ⏳ |
+### Backend → Fly.io (free tier, always-on)
+
+```bash
+# Install flyctl: https://fly.io/docs/flyctl/install/
+fly auth login
+fly apps create crybaby-api
+fly volumes create crybaby_data --size 1 --region sin
+fly secrets set SECRET_KEY=$(openssl rand -hex 32)
+# Optional:
+fly secrets set LLM_API_KEY=sk-ant-...
+fly secrets set VAPID_PRIVATE_KEY=... VAPID_PUBLIC_KEY=... VAPID_CLAIMS_EMAIL=you@email.com
+fly deploy
+```
+
+Set `VITE_API_URL=https://crybaby-api.fly.dev` in your Netlify env vars.
+
+### Frontend → Netlify
+
+```bash
+cd frontend
+# Set env var in Netlify dashboard:
+#   VITE_API_URL = https://crybaby-api.fly.dev
+npm run build    # or let Netlify auto-build from git
+```
+
+Netlify auto-detects `netlify.toml` for build settings and SPA redirects.
+
+### VAPID keys (one-time setup)
+
+```bash
+cd backend
+python scripts/gen_vapid.py
+# Copy the output keys into fly secrets or your .env
+```
+
+## Features
+
+| Feature | Status |
+|---------|--------|
+| Auth + household sharing | ✅ |
+| Baby profile + weight tracking | ✅ |
+| Activity logs (feed, diaper, custom) | ✅ |
+| Smart reminders + push notifications | ✅ |
+| Voice commands (Web Speech + Claude Haiku) | ✅ |
+| Analytics charts (feeding, diapers) | ✅ |
+| Expense tracking + CSV export | ✅ |
+| PWA — installable, offline banner | ✅ |
+| Glassmorphism / aurora design | ✅ |
 
 ## Cost
 
 | Service | Cost |
 |---------|------|
 | Frontend (Netlify) | Free |
-| Backend (Fly.io) | Free |
-| Database (Render PostgreSQL) | Free |
+| Backend (Fly.io shared-cpu-1x) | Free |
+| Database (SQLite on Fly volume) | Free |
 | Voice AI (Claude Haiku) | ~$0.07/month for 20 commands/day |
-| Push notifications | Free (Web Push / VAPID) |
+| Push notifications (VAPID) | Free |
 | **Total** | **~$0/month** |
