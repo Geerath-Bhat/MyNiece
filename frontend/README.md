@@ -1,48 +1,56 @@
 # CryBaby — Frontend
 
-Mobile-first React PWA. Works as an installable app on iOS and Android.
+Mobile-first React PWA. Installable on iOS and Android via "Add to Home Screen".
 
 ## Setup
 
 ```bash
 npm install
-cp .env.example .env   # set VITE_API_BASE_URL
+cp .env.example .env   # set VITE_API_BASE_URL and VITE_VAPID_PUBLIC_KEY
 npm run dev
 ```
 
 ## Environment Variables
 
 ```bash
-# .env
-VITE_API_BASE_URL=http://localhost:8000    # backend URL
-VITE_VAPID_PUBLIC_KEY=                     # from gen_vapid.py (Milestone 3)
+VITE_API_BASE_URL=http://localhost:8000       # backend URL
+VITE_VAPID_PUBLIC_KEY=                        # from backend scripts/gen_vapid.py
 ```
 
-## Available Scripts
+## Scripts
 
 | Command | Action |
 |---------|--------|
-| `npm run dev` | Start dev server at localhost:5173 |
-| `npm run build` | Production build (outputs to dist/) |
+| `npm run dev` | Dev server at localhost:5173 |
+| `npm run build` | Production build → dist/ |
 | `npm run preview` | Preview production build locally |
 
-## PWA Install
+## Stack
 
-In Chrome/Safari on mobile, tap **Share → Add to Home Screen** after visiting the deployed URL.
-The app runs fullscreen with no browser chrome.
+- **React 18** + TypeScript
+- **Vite** + VitePWA (service worker, push notifications)
+- **Tailwind CSS** — dark violet/fuchsia theme, glassmorphism cards
+- **Recharts** — analytics charts with gradient fills
+- **Zustand** — auth + active baby state
+- **Lucide React** — icons
+- **date-fns** — date formatting
 
-## Design System
+## Key Features
 
-- **Colors:** Indigo brand (`brand-500`) on Slate dark background
-- **Cards:** Glassmorphism (`bg-white/5 backdrop-blur border-white/10`)
-- **Motion:** Tailwind transitions + CSS keyframe animations
-- **Icons:** Lucide React
-- **Charts:** Recharts (Milestone 5)
+- **Dashboard** — hero banner, baby avatar, today's stats, quick-log grid, upcoming reminders
+- **Voice commands** — Web Speech API → LLM intent extraction → auto-log
+- **Analytics** — feeding trend (area chart), diaper breakdown, sleep hours, expense pie, weight trend
+- **Push notifications** — Web Push via VAPID, enabled in Settings
+- **Telegram** — per-user chat ID, step-by-step setup guide in Settings
+- **Real-time** — SSE event bus refreshes activity feed across devices
+- **PWA** — installable, offline banner, custom service worker
 
 ## Deployment (Netlify)
 
-```bash
-npm run build
-# Deploy dist/ to Netlify
-# Set VITE_API_BASE_URL=https://your-backend.fly.dev in Netlify env vars
+Connect GitHub repo — Netlify auto-detects `netlify.toml`.
+
+Set in Netlify dashboard → Environment variables:
+```
+VITE_API_BASE_URL=https://your-backend.fly.dev
+VITE_VAPID_PUBLIC_KEY=your_vapid_public_key
 ```

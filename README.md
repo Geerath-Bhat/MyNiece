@@ -1,95 +1,93 @@
 # CryBaby — Baby Care Tracker
 
-A mobile-first PWA for tracking feeding, diapers, and reminders — shared across 3–4 caregivers in real time.
+A mobile-first PWA for tracking feeding, diapers, sleep, expenses, and reminders — shared in real time across your whole household.
 
 ## Structure
 
 ```
 CryBaby/
-├── backend/     FastAPI + SQLAlchemy + APScheduler
-├── frontend/    React + Vite + Tailwind (PWA)
-├── fly.toml     Fly.io backend deployment
-└── docker-compose.yml   Local dev with Postgres
+├── backend/           FastAPI + SQLAlchemy + APScheduler
+├── frontend/          React + Vite + Tailwind CSS (PWA)
+├── docker-compose.yml Local dev with Postgres
+└── fly.toml           Fly.io backend deployment config
 ```
 
 ## Quick Start (Local Dev)
 
-### Option A — SQLite (simplest, no Docker)
+### Backend
 
 ```bash
-# Backend
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env          # only SECRET_KEY required
-alembic upgrade head
+cp .env.example .env          # fill in at minimum SECRET_KEY
 uvicorn app.main:app --reload
+```
 
-# Frontend (new terminal)
+API docs available at `http://localhost:8000/docs`
+
+### Frontend
+
+```bash
 cd frontend
 npm install
+cp .env.example .env          # set VITE_API_BASE_URL=http://localhost:8000
 npm run dev
 ```
 
 Open `http://localhost:5173`
 
-### Option B — Docker Compose (Postgres)
+## Features
 
-```bash
-docker-compose up --build
-cd frontend && npm install && npm run dev
-```
+| Feature | Notes |
+|---------|-------|
+| Auth + OTP email verification | Gmail SMTP, optional |
+| Household sharing | Invite code, multiple caregivers |
+| Baby profile + avatar | Photo upload, age display |
+| Activity logs | Feed, diaper, custom events, past event logging |
+| Sleep tracker | Start/stop sessions, duration history |
+| Weight tracking | Log from Dashboard, trend chart in Analytics |
+| Smart reminders | Interval or time-of-day, APScheduler |
+| Push notifications | Web Push via VAPID |
+| Telegram notifications | Bot alerts for all household members |
+| Voice commands | Web Speech API + LLM intent extraction |
+| Analytics | Feeding trend, diaper breakdown, sleep, expenses, weight |
+| Expense tracking | Categories, monthly pie chart |
+| PWA | Installable on iOS & Android, offline banner |
+| Real-time updates | SSE activity feed across devices |
 
 ## Deploy
 
-### Backend → Fly.io (free tier, always-on)
+### Backend → Fly.io
 
 ```bash
-# Install flyctl: https://fly.io/docs/flyctl/install/
 fly auth login
 fly apps create crybaby-api
-fly volumes create crybaby_data --size 1 --region sin
+fly volumes create crybaby_data --size 1
 fly secrets set SECRET_KEY=$(openssl rand -hex 32)
-# Optional:
-fly secrets set LLM_API_KEY=sk-ant-...
-fly secrets set VAPID_PRIVATE_KEY=... VAPID_PUBLIC_KEY=... VAPID_CLAIMS_EMAIL=you@email.com
+fly secrets set GROQ_API_KEY=...           # or GEMINI_API_KEY
+fly secrets set VAPID_PRIVATE_KEY=... VAPID_PUBLIC_KEY=... VAPID_CLAIM_EMAIL=...
+fly secrets set TELEGRAM_BOT_TOKEN=...
+fly secrets set CORS_ORIGINS=https://your-frontend.netlify.app
 fly deploy
 ```
 
-Set `VITE_API_URL=https://crybaby-api.fly.dev` in your Netlify env vars.
-
 ### Frontend → Netlify
 
-```bash
-cd frontend
-# Set env var in Netlify dashboard:
-#   VITE_API_URL = https://crybaby-api.fly.dev
-npm run build    # or let Netlify auto-build from git
+Connect your GitHub repo in the Netlify dashboard — it auto-detects `netlify.toml`.
+
+Set these environment variables in Netlify:
+```
+VITE_API_BASE_URL=https://crybaby-api.fly.dev
+VITE_VAPID_PUBLIC_KEY=your_vapid_public_key
 ```
 
-Netlify auto-detects `netlify.toml` for build settings and SPA redirects.
-
-### VAPID keys (one-time setup)
+### Generate VAPID keys (one-time)
 
 ```bash
-cd backend
+cd backend && source .venv/bin/activate
 python scripts/gen_vapid.py
-# Copy the output keys into fly secrets or your .env
 ```
-
-## Features
-
-| Feature | Status |
-|---------|--------|
-| Auth + household sharing | ✅ |
-| Baby profile + weight tracking | ✅ |
-| Activity logs (feed, diaper, custom) | ✅ |
-| Smart reminders + push notifications | ✅ |
-| Voice commands (Web Speech + Claude Haiku) | ✅ |
-| Analytics charts (feeding, diapers) | ✅ |
-| Expense tracking + CSV export | ✅ |
-| PWA — installable, offline banner | ✅ |
-| Glassmorphism / aurora design | ✅ |
 
 ## Cost
 
@@ -98,6 +96,8 @@ python scripts/gen_vapid.py
 | Frontend (Netlify) | Free |
 | Backend (Fly.io shared-cpu-1x) | Free |
 | Database (SQLite on Fly volume) | Free |
-| Voice AI (Claude Haiku) | ~$0.07/month for 20 commands/day |
+| Voice AI (Groq — llama3) | Free |
+| Voice AI (Gemini Flash) | Free |
 | Push notifications (VAPID) | Free |
-| **Total** | **~$0/month** |
+| Telegram notifications | Free |
+| **Total** | **$0/month** |
