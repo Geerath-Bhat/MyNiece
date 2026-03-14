@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Bell } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useBaby } from '@/hooks/useBaby'
 import { useNextFeed } from '@/hooks/useNextFeed'
+import { useActivityFeed } from '@/hooks/useActivityFeed'
 import { logsApi } from '@/api/logs'
 import type { ActivityLog } from '@/api/logs'
 import BabySetup from '@/pages/BabySetup'
@@ -33,15 +34,15 @@ function toActivityItem(log: ActivityLog): ActivityItem {
 
 export default function DashboardPage() {
   const user = useAuthStore(s => s.user)
-  const { baby, loading: babyLoading, noBaby, } = useBaby()
-  const { lastFedAt, nextDueAt, optimisticFeed } = useNextFeed(baby?.id ?? null)
+  const { baby, babies, loading: babyLoading, noBaby } = useBaby()
+  const { lastFedAt, nextDueAt, optimisticFeed, refresh: refreshFeed } = useNextFeed(baby?.id ?? null)
   const [activity, setActivity] = useState<ActivityItem[]>([])
   const [feedCount, setFeedCount] = useState(0)
   const [diaperCount, setDiaperCount] = useState(0)
   const [setupDone, setSetupDone] = useState(false)
 
   // Load today's summary + recent logs
-  useEffect(() => {
+  const loadLogs = useCallback(() => {
     if (!baby) return
     const today = new Date()
     today.setHours(0, 0, 0, 0)
@@ -52,7 +53,25 @@ export default function DashboardPage() {
       setFeedCount(todayLogs.filter(l => l.type === 'feed').length)
       setDiaperCount(todayLogs.filter(l => l.type === 'diaper').length)
     }).catch(() => {})
-  }, [baby, setupDone])
+  }, [baby])
+
+  useEffect(() => {
+    loadLogs()
+  }, [loadLogs, setupDone])
+
+  // Real-time SSE: when a partner logs something, refresh counts and next-feed
+  useActivityFeed({
+    babyId: baby?.id ?? null,
+    onEvent: (event) => {
+      if (event.type === 'activity_log') {
+        loadLogs()
+        // If it was a feed, also refresh the next-feed countdown
+        if (event.payload?.type === 'feed') {
+          refreshFeed()
+        }
+      }
+    },
+  })
 
   async function logFeed() {
     if (!baby) return
@@ -80,7 +99,7 @@ export default function DashboardPage() {
   }
 
   if (noBaby && !setupDone) {
-    return <BabySetup onCreated={() => setSetupDone(true)} />
+    return <BabySetup existingBabies={babies} onCreated={() => setSetupDone(true)} />
   }
 
   // Calculate interval from nextDueAt - lastFedAt

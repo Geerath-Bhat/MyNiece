@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Mic, MicOff, Sparkles, CheckCircle, XCircle } from 'lucide-react'
+import { useState, useCallback } from 'react'
+import { Mic, MicOff, Sparkles, CheckCircle, XCircle, Volume2 } from 'lucide-react'
 import { useVoice } from '@/hooks/useVoice'
 import { voiceApi } from '@/api/voice'
 import type { VoiceResult } from '@/api/voice'
@@ -10,30 +10,43 @@ const EXAMPLES = [
   '"Log diaper change, it was dirty"',
   '"Change feeding interval to 4 hours"',
   '"Turn off diaper reminder"',
-  '"Add a bath time reminder at 7 PM"',
+  '"Baby just woke up from sleep"',
 ]
+
+// Browser TTS — free, no API needed
+function speak(text: string) {
+  if (!('speechSynthesis' in window)) return
+  window.speechSynthesis.cancel()
+  const utt = new SpeechSynthesisUtterance(text)
+  utt.rate = 0.95
+  utt.pitch = 1.0
+  window.speechSynthesis.speak(utt)
+}
 
 export default function VoicePage() {
   const { baby } = useBaby()
   const [processing, setProcessing] = useState(false)
   const [result, setResult] = useState<VoiceResult | null>(null)
+  const [ttsEnabled, setTtsEnabled] = useState(true)
 
-  const { listening, interim, supported, start, stop } = useVoice({
-    onResult: async (transcript) => {
-      if (!baby) return
-      setProcessing(true)
-      setResult(null)
-      try {
-        const r = await voiceApi.interpret(transcript, baby.id)
-        setResult(r)
-      } catch {
-        setResult({ intent: 'error', entities: {}, action_taken: 'none',
-          response_message: 'Failed to process. Is LLM_API_KEY set?', success: false })
-      } finally {
-        setProcessing(false)
-      }
-    },
-  })
+  const handleResult = useCallback(async (transcript: string) => {
+    if (!baby) return
+    setProcessing(true)
+    setResult(null)
+    try {
+      const r = await voiceApi.interpret(transcript, baby.id)
+      setResult(r)
+      if (ttsEnabled && r.response_message) speak(r.response_message)
+    } catch {
+      const errMsg = 'Failed to process. Check that GEMINI_API_KEY is set in the backend.'
+      setResult({ intent: 'error', entities: {}, action_taken: 'none', response_message: errMsg, success: false })
+      if (ttsEnabled) speak(errMsg)
+    } finally {
+      setProcessing(false)
+    }
+  }, [baby, ttsEnabled])
+
+  const { listening, interim, supported, start, stop } = useVoice({ onResult: handleResult })
 
   const handleMic = () => {
     if (listening) stop()
@@ -42,9 +55,18 @@ export default function VoicePage() {
 
   return (
     <div className="flex flex-col gap-5 items-center text-center">
-      <div className="slide-up w-full">
-        <h1 className="text-xl font-bold text-white mb-1">Voice Command</h1>
-        <p className="text-sm text-slate-400">Speak naturally to log activities or update reminders</p>
+      <div className="slide-up w-full flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-white mb-1">Voice Command</h1>
+          <p className="text-sm text-slate-400">Speak naturally to log activities or update reminders</p>
+        </div>
+        <button
+          onClick={() => setTtsEnabled(v => !v)}
+          title={ttsEnabled ? 'TTS on — tap to mute' : 'TTS off — tap to enable'}
+          className={`glass p-2 rounded-xl transition-all ${ttsEnabled ? 'text-indigo-400' : 'text-slate-600'}`}
+        >
+          <Volume2 className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Mic button */}

@@ -13,7 +13,16 @@ export function usePushSubscription() {
   const [supported, setSupported] = useState(false)
 
   useEffect(() => {
-    setSupported('serviceWorker' in navigator && 'PushManager' in window)
+    const ok = 'serviceWorker' in navigator && 'PushManager' in window
+    setSupported(ok)
+    if (!ok) return
+
+    // Check if already subscribed so the Settings button reflects real state
+    navigator.serviceWorker.ready.then((reg) =>
+      reg.pushManager.getSubscription()
+    ).then((sub) => {
+      setSubscribed(!!sub)
+    }).catch(() => {})
   }, [])
 
   async function subscribe() {

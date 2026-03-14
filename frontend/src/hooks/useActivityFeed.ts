@@ -21,10 +21,11 @@ export function useActivityFeed({ babyId, onEvent }: UseActivityFeedOptions) {
 
   const connect = useCallback(() => {
     if (!babyId) return
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('crybaby_token')
     if (!token) return
 
-    const url = `${import.meta.env.VITE_API_URL ?? ''}/api/sse/feed?baby_id=${babyId}&token=${encodeURIComponent(token)}`
+    const base = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
+    const url = `${base}/api/sse/feed?baby_id=${babyId}&token=${encodeURIComponent(token)}`
     const es = new EventSource(url)
     esRef.current = es
 

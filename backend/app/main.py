@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import create_tables
 from app.scheduler.setup import start_scheduler, shutdown_scheduler
-from app.routers import auth, babies, reminders, logs, voice, push, expenses, analytics, sleep, sse
+from app.routers import auth, babies, reminders, logs, voice, push, expenses, analytics, sleep, sse, admin
 from app.services import event_bus
 
 
@@ -33,7 +33,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for router_module in [auth, babies, reminders, logs, voice, push, expenses, analytics, sleep, sse]:
+for router_module in [auth, babies, reminders, logs, voice, push, expenses, analytics, sleep, sse, admin]:
     app.include_router(router_module.router, prefix="/api")
 
 

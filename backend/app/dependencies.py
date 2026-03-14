@@ -34,3 +34,13 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin only")
     return current_user
+
+
+def require_verified(current_user: User = Depends(get_current_user)) -> User:
+    """Allows admin and verified users. Blocks unverified members."""
+    if current_user.role not in ("admin", "verified") and not current_user.is_verified:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account needs to be verified by the admin before you can log or edit data.",
+        )
+    return current_user

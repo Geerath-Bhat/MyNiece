@@ -24,15 +24,23 @@ def fire_reminder(reminder_id: str) -> None:
             return
 
         from app.services.notification_service import send_notification_to_household
+        from app.services.telegram_service import send_telegram_to_household
         baby = reminder.baby
         body_tpl = NOTIFICATION_BODIES.get(reminder.type, "{label}")
         body = body_tpl.format(baby=baby.name, label=reminder.label)
 
-        send_notification_to_household(
+        push_sent = send_notification_to_household(
             db=db, baby_id=str(reminder.baby_id),
             title=reminder.label, body=body,
         )
-        logger.info("Fired reminder %s (%s)", reminder.label, reminder.type)
+        tg_sent = send_telegram_to_household(
+            db=db, baby_id=str(reminder.baby_id),
+            title=reminder.label, body=body,
+        )
+        logger.info(
+            "Fired reminder %s (%s) — push=%d telegram=%d",
+            reminder.label, reminder.type, push_sent, tg_sent,
+        )
 
         # Reschedule interval-based reminders
         if reminder.interval_minutes:

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { User, Baby, Bell, LogOut, Users, ChevronDown, ChevronUp, Check, Loader2 } from 'lucide-react'
+import { User, Baby, Bell, LogOut, Users, ChevronDown, ChevronUp, Check, Loader2, Send } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useBaby } from '@/hooks/useBaby'
 import { usePushSubscription } from '@/hooks/usePushSubscription'
@@ -31,7 +31,7 @@ function Row({ label, value }: { label: string; value?: string }) {
 }
 
 export default function SettingsPage() {
-  const { user, logout } = useAuthStore()
+  const { user, logout, setAuth, token } = useAuthStore()
   const { baby } = useBaby()
   const { subscribed, subscribe, supported } = usePushSubscription()
   const navigate = useNavigate()
@@ -41,6 +41,9 @@ export default function SettingsPage() {
   const [loadingMembers, setLoadingMembers] = useState(false)
   const [subscribing, setSubscribing] = useState(false)
   const [inviteCode, setInviteCode] = useState<string | null>(null)
+  const [telegramId, setTelegramId] = useState(user?.telegram_chat_id ?? '')
+  const [savingTelegram, setSavingTelegram] = useState(false)
+  const [telegramSaved, setTelegramSaved] = useState(false)
 
   const handleLogout = () => {
     logout()
@@ -65,12 +68,26 @@ export default function SettingsPage() {
     try { await subscribe() } finally { setSubscribing(false) }
   }
 
-  // Generate invite code (household_id first 8 chars as simple code)
-  useEffect(() => {
-    if (user?.household_id) {
-      setInviteCode(user.household_id.replace(/-/g, '').slice(0, 8).toUpperCase())
+  const handleSaveTelegram = async () => {
+    setSavingTelegram(true)
+    try {
+      const updated = await authApi.patchMe({ telegram_chat_id: telegramId.trim() })
+      if (token) setAuth(token, updated)
+      setTelegramSaved(true)
+      setTimeout(() => setTelegramSaved(false), 2500)
+    } catch {
+      // ignore
+    } finally {
+      setSavingTelegram(false)
     }
-  }, [user])
+  }
+
+  // Fetch the real invite code from the backend
+  useEffect(() => {
+    authApi.householdInviteCode()
+      .then(data => setInviteCode(data.invite_code.toUpperCase()))
+      .catch(() => {})
+  }, [])
 
   const babyAge = baby?.date_of_birth
     ? (() => {
@@ -112,6 +129,7 @@ export default function SettingsPage() {
       {/* Push notifications */}
       <div className="slide-up-3">
         <Section title="Notifications" icon={Bell} color="text-amber-400">
+          {/* Web Push */}
           {!supported ? (
             <p className="text-xs text-slate-500">Push notifications not supported in this browser.</p>
           ) : subscribed ? (
@@ -131,6 +149,37 @@ export default function SettingsPage() {
               Enable Push Notifications
             </button>
           )}
+
+          {/* Telegram */}
+          <div className="pt-2 border-t border-white/5">
+            <p className="text-xs text-slate-500 mb-2 flex items-center gap-1">
+              <Send className="w-3 h-3 text-sky-400" />
+              Telegram — get reminders via message
+            </p>
+            <p className="text-xs text-slate-600 mb-2">
+              Message <span className="text-sky-400 font-mono">@userinfobot</span> on Telegram to get your Chat ID, then paste it below.
+            </p>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={telegramId}
+                onChange={e => setTelegramId(e.target.value)}
+                placeholder="Your Telegram Chat ID"
+                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-sky-500/50"
+              />
+              <button
+                onClick={handleSaveTelegram}
+                disabled={savingTelegram}
+                className="px-3 py-2 rounded-xl bg-sky-600 text-white text-xs font-semibold disabled:opacity-50 flex items-center gap-1"
+              >
+                {savingTelegram
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : telegramSaved
+                  ? <Check className="w-3.5 h-3.5" />
+                  : 'Save'}
+              </button>
+            </div>
+          </div>
         </Section>
       </div>
 
@@ -138,10 +187,14 @@ export default function SettingsPage() {
       <div className="slide-up-4">
         <Section title="Household" icon={Users} color="text-violet-400">
           {inviteCode && (
-            <div className="bg-white/5 rounded-xl px-3 py-2 flex items-center justify-between">
-              <span className="text-xs text-slate-400">Invite code</span>
+            <button
+              onClick={() => navigator.clipboard.writeText(inviteCode).catch(() => {})}
+              className="bg-white/5 rounded-xl px-3 py-2 flex items-center justify-between w-full hover:bg-white/10 transition-colors"
+              title="Tap to copy"
+            >
+              <span className="text-xs text-slate-400">Invite code <span className="text-slate-600">(tap to copy)</span></span>
               <span className="text-sm font-mono font-bold text-violet-300 tracking-wider">{inviteCode}</span>
-            </div>
+            </button>
           )}
           <button
             onClick={toggleMembers}

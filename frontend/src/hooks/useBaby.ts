@@ -20,8 +20,15 @@ export function useBaby() {
         setBaby(active)
         setActiveBabyId(active.id)
       }
-    }).catch(() => setNoBaby(true))
-    .finally(() => setLoading(false))
+    }).catch((err) => {
+      // Auth errors (401/403) are handled by the axios interceptor (redirect to login).
+      // Only show the no-baby setup screen for genuine "no data" cases.
+      const status = err?.response?.status
+      if (!status || status >= 500) {
+        setNoBaby(true) // network/server error — let user retry
+      }
+      // 401/403 → interceptor redirects to login, no state change needed
+    }).finally(() => setLoading(false))
   }, [activeBabyId, setActiveBabyId])
 
   return { baby, babies, loading, noBaby }

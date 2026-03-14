@@ -35,8 +35,8 @@ def _feed_stats(db: Session, baby_id: str, since: datetime) -> dict:
 
 def generate_insight(db: Session, baby_id: str) -> str:
     """Call Claude Haiku and return a short insight paragraph. Raises if LLM not configured."""
-    if not settings.llm_api_key:
-        raise ValueError("LLM_API_KEY not set")
+    if not settings.active_llm_key:
+        raise ValueError("No LLM API key set (GEMINI_API_KEY or LLM_API_KEY)")
 
     baby = db.query(Baby).get(baby_id)
     if not baby:
@@ -71,21 +71,47 @@ def generate_insight(db: Session, baby_id: str) -> str:
         "Be encouraging and specific. Return only the paragraph text, nothing else."
     )
 
-    if settings.llm_provider == "anthropic":
+    provider = settings.active_llm_provider
+
+    if provider == "gemini":
+        import google.generativeai as genai
+        genai.configure(api_key=settings.active_llm_key)
+        model = genai.GenerativeModel(
+            model_name=settings.active_llm_model,
+            system_instruction=system,
+        )
+        resp = model.generate_content(prompt)
+        return resp.text.strip()
+
+    elif provider == "groq":
+        import openai
+        client = openai.OpenAI(
+            api_key=settings.active_llm_key,
+            base_url="https://api.groq.com/openai/v1",
+        )
+        resp = client.chat.completions.create(
+            model=settings.active_llm_model,
+            max_tokens=256,
+            messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
+        )
+        return (resp.choices[0].message.content or "").strip()
+
+    elif provider == "anthropic":
         import anthropic
-        client = anthropic.Anthropic(api_key=settings.llm_api_key)
+        client = anthropic.Anthropic(api_key=settings.active_llm_key)
         msg = client.messages.create(
-            model=settings.llm_model,
+            model=settings.active_llm_model,
             max_tokens=256,
             system=system,
             messages=[{"role": "user", "content": prompt}],
         )
         return msg.content[0].text.strip()
+
     else:
         import openai
-        client = openai.OpenAI(api_key=settings.llm_api_key)
+        client = openai.OpenAI(api_key=settings.active_llm_key)
         resp = client.chat.completions.create(
-            model=settings.llm_model,
+            model=settings.active_llm_model,
             max_tokens=256,
             messages=[{"role": "system", "content": system}, {"role": "user", "content": prompt}],
         )

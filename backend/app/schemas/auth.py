@@ -27,6 +27,9 @@ class UserOut(BaseModel):
     timezone: str
     role: str
     household_id: str
+    is_verified: bool = False
+    avatar_url: str | None = None
+    theme: str = "aurora"
 
     class Config:
         from_attributes = True
@@ -36,6 +39,21 @@ class RegisterResponse(TokenResponse):
     user: UserOut
 
 
+class OTPChallengeResponse(BaseModel):
+    otp_required: bool = True
+    user_id: str
+    email_hint: str   # "g***@gmail.com"
+
+
+class VerifyOTPRequest(BaseModel):
+    user_id: str
+    code: str
+
+
 class PatchMeRequest(BaseModel):
     display_name: str | None = None
     timezone: str | None = None
+    avatar_url: str | None = None
+    theme: str | None = None
+    whatsapp_number: str | None = None
+    telegram_chat_id: str | None = None

@@ -7,7 +7,12 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
+      // injectManifest lets us use a custom sw.ts with our own push handler
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       registerType: 'autoUpdate',
+      injectRegister: 'auto',
       includeAssets: ['favicon.ico', 'icons/*.png'],
       manifest: {
         name: 'CryBaby — Baby Care Tracker',
@@ -23,19 +28,8 @@ export default defineConfig({
           { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
         ],
       },
-      workbox: {
+      injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        runtimeCaching: [
-          {
-            urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-cache',
-              networkTimeoutSeconds: 5,
-              expiration: { maxAgeSeconds: 300 },
-            },
-          },
-        ],
       },
     }),
   ],

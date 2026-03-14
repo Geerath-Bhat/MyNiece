@@ -14,11 +14,13 @@ api.interceptors.request.use((config) => {
   return config
 })
 
-// On 401, clear token and redirect to login
+// On 401 or 403-with-no-token, clear and redirect to login
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    const status = err.response?.status
+    const hasToken = !!localStorage.getItem('crybaby_token')
+    if (status === 401 || (status === 403 && !hasToken)) {
       localStorage.removeItem('crybaby_token')
       window.location.href = '/login'
     }

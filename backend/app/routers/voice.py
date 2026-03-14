@@ -13,7 +13,7 @@ router = APIRouter(prefix="/voice", tags=["voice"])
 async def interpret(body: VoiceInterpretIn,
                     user: User = Depends(get_current_user),
                     db: Session = Depends(get_db)):
-    if not settings.llm_api_key:
-        raise HTTPException(503, "Voice AI not configured — set LLM_API_KEY")
+    if not settings.active_llm_key:
+        raise HTTPException(503, "Voice AI not configured — set GEMINI_API_KEY or LLM_API_KEY")
     from app.services.voice_service import interpret as svc_interpret
     return await svc_interpret(db, body.transcript, body.baby_id, user.id, user.timezone)

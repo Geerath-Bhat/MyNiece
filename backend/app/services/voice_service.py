@@ -17,9 +17,16 @@ Extract the user's intent from the voice transcript and return ONLY valid JSON.
 Today is {today}. Current time: {current_time} ({timezone}).
 Baby name: {baby_name}.
 
+IMPORTANT RULES:
+1. If the transcript is NOT related to baby care (feeding, diapers, sleep, reminders, health), set intent to "irrelevant".
+2. If you are unsure or confidence is below 0.6, set intent to "unknown".
+3. Examples of IRRELEVANT inputs: "I am going to market", "what's the weather", "play music", "call mom".
+4. For timestamps: "at 3pm" means today at 15:00, "an hour ago" means {current_time} minus 60 minutes.
+5. For feeding interval changes: "change feeding to every 4 hours" → interval_minutes = 240.
+
 Return JSON with this exact shape:
 {{
-  "intent": "<one of: log_feed | log_diaper | log_custom | update_reminder | toggle_reminder | create_reminder | query_last_feed | unknown>",
+  "intent": "<one of: log_feed | log_diaper | log_custom | update_reminder | toggle_reminder | create_reminder | query_last_feed | irrelevant | unknown>",
   "confidence": 0.0,
   "entities": {{
     "timestamp": "<ISO 8601 or null>",
@@ -31,8 +38,17 @@ Return JSON with this exact shape:
     "is_enabled": <true|false|null>,
     "notes": "<string or null>"
   }},
-  "response_message": "<1-sentence human-friendly confirmation>"
+  "response_message": "<1-sentence human-friendly message. For irrelevant: explain this is a baby care app only.>"
 }}"""
+
+
+def _strip_fences(raw: str) -> str:
+    raw = raw.strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+    return raw.strip()
 
 
 async def call_llm(transcript: str, tz: str, baby_name: str) -> dict:
@@ -43,37 +59,61 @@ async def call_llm(transcript: str, tz: str, baby_name: str) -> dict:
         timezone=tz,
         baby_name=baby_name,
     )
+    user_msg = f'Transcript: "{transcript}"'
+    provider = settings.active_llm_provider
 
-    if settings.llm_provider == "anthropic":
+    if provider == "gemini":
+        import google.generativeai as genai
+        genai.configure(api_key=settings.active_llm_key)
+        model = genai.GenerativeModel(
+            model_name=settings.active_llm_model,
+            system_instruction=system,
+        )
+        resp = model.generate_content(user_msg)
+        raw = resp.text
+
+    elif provider == "groq":
+        import openai
+        client = openai.OpenAI(
+            api_key=settings.active_llm_key,
+            base_url="https://api.groq.com/openai/v1",
+        )
+        resp = client.chat.completions.create(
+            model=settings.active_llm_model,
+            max_tokens=512,
+            response_format={"type": "json_object"},
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user_msg},
+            ],
+        )
+        raw = resp.choices[0].message.content or ""
+
+    elif provider == "anthropic":
         import anthropic
-        client = anthropic.Anthropic(api_key=settings.llm_api_key)
+        client = anthropic.Anthropic(api_key=settings.active_llm_key)
         msg = client.messages.create(
-            model=settings.llm_model,
+            model=settings.active_llm_model,
             max_tokens=512,
             system=system,
-            messages=[{"role": "user", "content": f'Transcript: "{transcript}"'}],
+            messages=[{"role": "user", "content": user_msg}],
         )
         raw = msg.content[0].text
+
     else:
         import openai
-        client = openai.OpenAI(api_key=settings.llm_api_key)
+        client = openai.OpenAI(api_key=settings.active_llm_key)
         resp = client.chat.completions.create(
-            model=settings.llm_model,
+            model=settings.active_llm_model,
             max_tokens=512,
             messages=[
                 {"role": "system", "content": system},
-                {"role": "user", "content": f'Transcript: "{transcript}"'},
+                {"role": "user", "content": user_msg},
             ],
         )
-        raw = resp.choices[0].message.content
+        raw = resp.choices[0].message.content or ""
 
-    # Strip markdown fences if present
-    raw = raw.strip()
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    return json.loads(raw.strip())
+    return json.loads(_strip_fences(raw))
 
 
 async def interpret(db: Session, transcript: str, baby_id: str, user_id: str, user_tz: str) -> VoiceResultOut:
@@ -97,6 +137,20 @@ async def interpret(db: Session, transcript: str, baby_id: str, user_id: str, us
         result.response_message = response_msg
 
         from app.services.reminder_service import reschedule_after_feed
+
+        # Block irrelevant inputs immediately
+        if intent == "irrelevant" or llm_data.get("confidence", 1.0) < 0.5:
+            result.intent = "irrelevant"
+            result.action_taken = "none"
+            result.response_message = llm_data.get("response_message",
+                "That doesn't seem related to baby care. Try saying something like 'I fed the baby at 3pm'.")
+            result.success = False
+            db.add(VoiceCommand(
+                user_id=user_id, baby_id=baby_id, transcript=transcript,
+                detected_intent="irrelevant", entities_json={}, success=False, error_message=None,
+            ))
+            db.commit()
+            return result
 
         match intent:
             case "log_feed":
@@ -188,7 +242,13 @@ async def interpret(db: Session, transcript: str, baby_id: str, user_id: str, us
     except Exception as e:
         logger.exception("Voice interpret error")
         error_msg = str(e)
-        result.response_message = "Something went wrong processing your command."
+        err_lower = str(e).lower()
+        if "credit balance" in err_lower or "billing" in err_lower or "quota" in err_lower:
+            result.response_message = "AI service is unavailable — API quota or credit issue. Check your API key."
+        elif "invalid_api_key" in err_lower or "authentication" in err_lower:
+            result.response_message = "AI service is unavailable — invalid API key configured."
+        else:
+            result.response_message = "Something went wrong processing your command."
 
     # Audit log
     db.add(VoiceCommand(
