@@ -34,7 +34,7 @@ function DeleteConfirmModal({ log, onConfirm, onCancel }: {
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4" onClick={onCancel}>
-      <div className="w-full max-w-sm bg-slate-900 border border-white/10 rounded-2xl p-6 flex flex-col gap-4" onClick={e => e.stopPropagation()}>
+      <div className="w-full max-w-sm modal-surface rounded-2xl p-6 flex flex-col gap-4" onClick={e => e.stopPropagation()}>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-red-500/15 flex items-center justify-center shrink-0">
             <AlertTriangle className="w-5 h-5 text-red-400" />

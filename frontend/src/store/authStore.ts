@@ -7,7 +7,7 @@ interface AuthState {
   user: UserOut | null
   activeBabyId: string | null
   setAuth: (token: string, user: UserOut) => void
-  setActiveBabyId: (id: string) => void
+  setActiveBabyId: (id: string | null) => void
   logout: () => void
 }
 

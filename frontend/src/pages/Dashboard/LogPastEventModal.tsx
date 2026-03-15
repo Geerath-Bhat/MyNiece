@@ -54,7 +54,7 @@ export function LogPastEventModal({ babyId, onLogged, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="w-full max-w-md bg-[#0d0b18] border border-violet-500/20 rounded-3xl p-6 flex flex-col gap-4"
+        className="w-full max-w-md modal-surface rounded-3xl p-6 flex flex-col gap-4"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">

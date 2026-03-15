@@ -40,7 +40,7 @@ export function WeightLogModal({ babyId, babyName, onSaved, onClose }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-sm bg-[#0d0b18] border border-violet-500/20 rounded-3xl p-6 flex flex-col gap-4" onClick={e => e.stopPropagation()}>
+      <div className="w-full max-w-sm modal-surface rounded-3xl p-6 flex flex-col gap-4" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-xl bg-emerald-500/15 flex items-center justify-center">

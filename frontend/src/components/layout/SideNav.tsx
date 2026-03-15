@@ -34,7 +34,7 @@ export function SideNav() {
       fixed left-0 top-0 bottom-0 z-50
       w-16 lg:w-56
       border-r border-white/5
-      bg-slate-950/80 backdrop-blur-xl
+      nav-surface
       py-6
     ">
       {/* Logo */}

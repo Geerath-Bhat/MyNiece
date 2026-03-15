@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import { useThemeStore } from '@/store/themeStore'
 import { Loader2, TrendingUp, TrendingDown, Droplets, Clock, Scale, Moon, Wallet, Minus } from 'lucide-react'
 import { InsightCard } from '@/components/ui/InsightCard'
 import {
@@ -20,15 +21,6 @@ import { parseUTC } from '@/utils/dates'
 const COLORS = ['#7c3aed', '#ec4899', '#06b6d4', '#10b981', '#f59e0b']
 const CAT_COLORS: Record<string, string> = {
   diapers: '#7c3aed', medicine: '#ec4899', products: '#06b6d4', doctor: '#10b981', other: '#f59e0b',
-}
-
-const TOOLTIP_STYLE = {
-  background: '#120f22',
-  border: '1px solid rgba(167,139,250,0.2)',
-  borderRadius: 12,
-  color: '#f1f5f9',
-  fontSize: 12,
-  padding: '8px 12px',
 }
 
 // ── Trend badge ───────────────────────────────────────────────────
@@ -92,14 +84,24 @@ function SectionHeader({ icon: Icon, color, title, sub }: {
   )
 }
 
-// Custom dot for area chart
+// Custom dot for area chart — uses CSS variable so it matches the page bg in both themes
 function GlowDot(props: { cx?: number; cy?: number; stroke?: string }) {
   const { cx = 0, cy = 0, stroke = '#7c3aed' } = props
-  return <circle cx={cx} cy={cy} r={4} fill={stroke} stroke="#0d0b18" strokeWidth={2} />
+  return <circle cx={cx} cy={cy} r={4} fill={stroke} stroke="var(--color-bg)" strokeWidth={2} />
 }
 
 export default function AnalyticsPage() {
   const { baby } = useBaby()
+  const theme = useThemeStore(s => s.theme)
+  const tooltipStyle = useMemo(() => ({
+    background: theme === 'dark' ? '#120f22' : '#ffffff',
+    border: '1px solid rgba(167,139,250,0.25)',
+    borderRadius: 12,
+    color: theme === 'dark' ? '#f1f5f9' : '#2d1a6e',
+    fontSize: 12,
+    padding: '8px 12px',
+  }), [theme])
+  const dotStroke = theme === 'dark' ? '#0d0b18' : '#f0ebff'
   const [feeding, setFeeding] = useState<FeedingAnalytics | null>(null)
   const [diapers, setDiapers] = useState<DiaperAnalytics | null>(null)
   const [weekly, setWeekly] = useState<WeeklySummary | null>(null)
@@ -223,11 +225,11 @@ export default function AnalyticsPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
               <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ stroke: 'rgba(124,58,237,0.3)', strokeWidth: 1 }} />
+              <Tooltip contentStyle={tooltipStyle} cursor={{ stroke: 'rgba(124,58,237,0.3)', strokeWidth: 1 }} />
               <Area
                 type="monotone" dataKey="feeds" stroke="#7c3aed" strokeWidth={2.5}
                 fill="url(#feedGrad)" dot={<GlowDot stroke="#7c3aed" />}
-                activeDot={{ r: 6, fill: '#7c3aed', stroke: '#0d0b18', strokeWidth: 2 }}
+                activeDot={{ r: 6, fill: '#7c3aed', stroke: dotStroke, strokeWidth: 2 }}
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -260,7 +262,7 @@ export default function AnalyticsPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
                 <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
                 <Bar dataKey="wet" name="Wet" stackId="a" fill="url(#wetGrad)" />
                 <Bar dataKey="dirty" name="Dirty" stackId="a" fill="url(#dirtyGrad)" />
                 <Bar dataKey="both" name="Both" stackId="a" fill="url(#bothGrad)" radius={[4, 4, 0, 0]} />
@@ -304,7 +306,7 @@ export default function AnalyticsPage() {
               <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} unit="h" />
               <Tooltip
                 formatter={(v: unknown) => [`${v}h`, 'Sleep']}
-                contentStyle={TOOLTIP_STYLE}
+                contentStyle={tooltipStyle}
                 cursor={{ fill: 'rgba(255,255,255,0.03)' }}
               />
               <Bar dataKey="hours" fill="url(#sleepGrad)" radius={[6, 6, 0, 0]} />
@@ -335,7 +337,7 @@ export default function AnalyticsPage() {
                       <Cell key={i} fill={CAT_COLORS[entry.name] ?? COLORS[i % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: unknown) => `₹${Number(v).toFixed(0)}`} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(v: unknown) => `₹${Number(v).toFixed(0)}`} />
                 </PieChart>
               </div>
               <div className="flex flex-col gap-1.5 flex-1">
@@ -376,12 +378,12 @@ export default function AnalyticsPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
               <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} unit="kg" domain={['auto', 'auto']} />
-              <Tooltip formatter={(v: unknown) => [`${v}kg`, 'Weight']} contentStyle={TOOLTIP_STYLE}
+              <Tooltip formatter={(v: unknown) => [`${v}kg`, 'Weight']} contentStyle={tooltipStyle}
                 cursor={{ stroke: 'rgba(16,185,129,0.3)', strokeWidth: 1 }} />
               <Area
                 type="monotone" dataKey="kg" stroke="#10b981" strokeWidth={2.5}
                 fill="url(#weightGrad)" dot={<GlowDot stroke="#10b981" />}
-                activeDot={{ r: 6, fill: '#10b981', stroke: '#0d0b18', strokeWidth: 2 }}
+                activeDot={{ r: 6, fill: '#10b981', stroke: dotStroke, strokeWidth: 2 }}
               />
             </AreaChart>
           </ResponsiveContainer>

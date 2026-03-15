@@ -63,3 +63,51 @@ def send_notification_to_household(
         db.commit()
 
     return sent
+
+
+def send_push_to_users(
+    db: Session, user_ids: list[str], title: str, body: str, url: str = "/"
+) -> int:
+    """Send a Web Push notification to specific users. Returns sent count."""
+    if not settings.vapid_private_key or not user_ids:
+        return 0
+
+    try:
+        from pywebpush import webpush, WebPushException
+    except ImportError:
+        return 0
+
+    subs = db.query(PushSubscription).filter(PushSubscription.user_id.in_(user_ids)).all()
+
+    payload = json.dumps({
+        "title": title,
+        "body": body,
+        "icon": "/icons/icon-192.png",
+        "badge": "/icons/badge-72.png",
+        "data": {"url": url},
+    })
+
+    sent = 0
+    expired: list[str] = []
+
+    for sub in subs:
+        try:
+            webpush(
+                subscription_info=sub.subscription_json,
+                data=payload,
+                vapid_private_key=settings.vapid_private_key,
+                vapid_claims={"sub": f"mailto:{settings.vapid_claim_email}"},
+            )
+            sent += 1
+        except Exception as e:
+            if hasattr(e, "response") and e.response and e.response.status_code == 410:
+                expired.append(sub.id)
+            else:
+                logger.error("Push failed for sub %s: %s", sub.id, e)
+
+    for sub_id in expired:
+        db.query(PushSubscription).filter(PushSubscription.id == sub_id).delete()
+    if expired:
+        db.commit()
+
+    return sent

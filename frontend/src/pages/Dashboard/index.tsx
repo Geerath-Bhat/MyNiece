@@ -177,8 +177,7 @@ export default function DashboardPage() {
                 )}
               </button>
               {showBell && (
-                <div className="absolute right-0 top-12 z-50 rounded-2xl p-4 w-72 shadow-2xl"
-                  style={{ background: '#120f22', border: '1px solid rgba(167,139,250,0.15)' }}>
+                <div className="absolute right-0 top-12 z-50 rounded-2xl p-4 w-72 shadow-2xl dropdown-surface">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-sm font-semibold text-slate-200">Recent Activity</span>
                     <button onClick={() => setShowBell(false)}>

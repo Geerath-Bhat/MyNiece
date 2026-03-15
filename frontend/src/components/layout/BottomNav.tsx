@@ -11,7 +11,7 @@ const links = [
 
 export function BottomNav() {
   return (
-    <nav className="md:hidden fixed bottom-0 inset-x-0 bg-slate-900 border-t border-slate-700 z-50 pb-safe">
+    <nav className="md:hidden fixed bottom-0 inset-x-0 nav-surface border-t border-slate-700 z-50 pb-safe">
       <ul className="flex justify-around items-center h-16">
         {links.map(({ to, icon: Icon, label }) => (
           <li key={to} className="flex-1">

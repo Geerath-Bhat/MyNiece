@@ -1,6 +1,8 @@
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ToastContainer } from '@/components/ui/Toast'
 import { useAuthStore } from '@/store/authStore'
+import { useThemeStore } from '@/store/themeStore'
 import { AppShell } from '@/components/layout/AppShell'
 import Login from '@/pages/Auth/Login'
 import Register from '@/pages/Auth/Register'
@@ -20,9 +22,18 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   return token ? <>{children}</> : <Navigate to="/login" replace />
 }
 
+function ThemeSync() {
+  const theme = useThemeStore((s) => s.theme)
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme)
+  }, [theme])
+  return null
+}
+
 export default function App() {
   return (
     <BrowserRouter>
+      <ThemeSync />
       <ToastContainer />
       <Routes>
         {/* Public */}

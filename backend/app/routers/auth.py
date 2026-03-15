@@ -4,14 +4,14 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import get_current_user, require_admin
 from app.models.household import Household
 from app.models.user import User
 from app.models.otp_code import OTPCode
 from app.schemas.auth import (
     RegisterRequest, LoginRequest, TokenResponse,
     UserOut, RegisterResponse, PatchMeRequest,
-    OTPChallengeResponse, VerifyOTPRequest,
+    OTPChallengeResponse, VerifyOTPRequest, HouseholdOut,
 )
 from app.services.auth_service import (
     hash_password, authenticate_user, create_access_token, get_user_by_email
@@ -92,26 +92,44 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
-    # Notify admins of the household via Telegram
-    try:
+    # Notify admins of the household via Telegram + Push (fire-and-forget)
+    _new_user_display = user.display_name
+    _household_name = household.name
+    _household_id = household.id
+
+    def _notify_admins_new_member():
+        from app.database import SessionLocal
         from app.services.telegram_service import send_telegram_message
-        admins = db.query(User).filter(
-            User.household_id == household.id,
-            User.role.in_(["admin", "super_admin"]),
-        ).all()
-        msg = (
-            f"👶 <b>New user joined CryBaby!</b>\n"
-            f"Name: {user.display_name}\n"
-            f"Email: {_mask_email(user.email)}\n"
-            f"Household: {household.name}\n"
-            f"Role: {role}\n\n"
-            f"Open the Admin page in the app to verify them."
-        )
-        for admin in admins:
-            if admin.telegram_chat_id:
-                send_telegram_message(admin.telegram_chat_id, msg)
-    except Exception:
-        logger.exception("Failed to notify admins of new registration")
+        from app.services.notification_service import send_push_to_users
+        _db = SessionLocal()
+        try:
+            admins = _db.query(User).filter(
+                User.household_id == _household_id,
+                User.role.in_(["admin", "super_admin"]),
+            ).all()
+            msg = (
+                f"👶 <b>New user joined CryBaby!</b>\n"
+                f"Name: {_new_user_display}\n"
+                f"Household: {_household_name}\n\n"
+                f"Open the Admin page to verify them."
+            )
+            admin_ids = [a.id for a in admins]
+            for admin in admins:
+                if admin.telegram_chat_id:
+                    send_telegram_message(admin.telegram_chat_id, msg)
+            send_push_to_users(
+                _db, admin_ids,
+                f"👶 New member: {_new_user_display}",
+                f"Joined {_household_name} — tap to verify them",
+                url="/admin",
+            )
+        except Exception:
+            logger.exception("Failed to notify admins of new registration")
+        finally:
+            _db.close()
+
+    import threading
+    threading.Thread(target=_notify_admins_new_member, daemon=True).start()
 
     token = create_access_token({"sub": user.id})
     return RegisterResponse(access_token=token, user=UserOut.model_validate(user))
@@ -250,3 +268,59 @@ def remove_member(user_id: str, current_user: User = Depends(get_current_user), 
         raise HTTPException(status_code=404, detail="Member not found")
     db.delete(target)
     db.commit()
+
+
+@router.post("/request-verification", status_code=204)
+def request_verification(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """Unverified member pings household admins to request verification."""
+    if current_user.is_verified or current_user.role in ("admin", "super_admin"):
+        raise HTTPException(status_code=400, detail="Already verified")
+
+    _requester = current_user.display_name
+    _household_id = current_user.household_id
+
+    def _notify():
+        from app.database import SessionLocal
+        from app.services.telegram_service import send_telegram_message
+        from app.services.notification_service import send_push_to_users
+        _db = SessionLocal()
+        try:
+            admins = _db.query(User).filter(
+                User.household_id == _household_id,
+                User.role.in_(["admin", "super_admin"]),
+            ).all()
+            msg = f"🔔 <b>{_requester}</b> is requesting verification in CryBaby. Open the Admin panel to verify them."
+            admin_ids = [a.id for a in admins]
+            for admin in admins:
+                if admin.telegram_chat_id:
+                    send_telegram_message(admin.telegram_chat_id, msg)
+            send_push_to_users(
+                _db, admin_ids,
+                f"🔔 {_requester} requests verification",
+                "Open Admin panel to verify this member",
+                url="/admin",
+            )
+        finally:
+            _db.close()
+
+    import threading
+    threading.Thread(target=_notify, daemon=True).start()
+
+
+@router.patch("/household", response_model=HouseholdOut)
+def rename_household(
+    body: dict,
+    current_user: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Rename the current user's household. Admin only."""
+    name = (body.get("name") or "").strip()
+    if not name:
+        raise HTTPException(status_code=422, detail="Household name cannot be empty")
+    household = db.query(Household).filter(Household.id == current_user.household_id).first()
+    if not household:
+        raise HTTPException(status_code=404, detail="Household not found")
+    household.name = name
+    db.commit()
+    db.refresh(household)
+    return HouseholdOut.model_validate(household)

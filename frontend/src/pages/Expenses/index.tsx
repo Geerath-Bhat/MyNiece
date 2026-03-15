@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Plus, DollarSign, Loader2, Trash2, Download } from 'lucide-react'
+import { Plus, DollarSign, Loader2, Trash2, Download, Pencil, X } from 'lucide-react'
 import { expensesApi } from '@/api/expenses'
 import type { Expense, ExpenseSummary } from '@/api/expenses'
 import { useBaby } from '@/hooks/useBaby'
@@ -13,6 +13,8 @@ const CAT_COLORS: Record<string, string> = {
   diapers: '#6366f1', medicine: '#ef4444', products: '#06b6d4', doctor: '#10b981', other: '#f59e0b',
 }
 
+const BLANK_FORM = { amount: '', category: 'diapers', date: format(new Date(), 'yyyy-MM-dd'), note: '' }
+
 export default function ExpensesPage() {
   const { baby } = useBaby()
   const canEdit = useCanEdit()
@@ -20,7 +22,8 @@ export default function ExpensesPage() {
   const [summary, setSummary] = useState<ExpenseSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
-  const [form, setForm] = useState({ amount: '', category: 'diapers', date: format(new Date(), 'yyyy-MM-dd'), note: '' })
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [form, setForm] = useState(BLANK_FORM)
   const [saving, setSaving] = useState(false)
   const currentMonth = format(new Date(), 'yyyy-MM')
 
@@ -37,19 +40,50 @@ export default function ExpensesPage() {
 
   useEffect(() => { load() }, [baby])
 
+  function openAdd() {
+    setEditingId(null)
+    setForm(BLANK_FORM)
+    setShowForm(true)
+  }
+
+  function openEdit(e: Expense) {
+    setEditingId(e.id)
+    setForm({ amount: String(e.amount), category: e.category, date: e.date, note: e.note ?? '' })
+    setShowForm(true)
+  }
+
+  function closeForm() {
+    setShowForm(false)
+    setEditingId(null)
+    setForm(BLANK_FORM)
+  }
+
   async function save() {
     if (!baby || !form.amount) return
     setSaving(true)
-    await expensesApi.create({ baby_id: baby.id, amount: parseFloat(form.amount), category: form.category, date: form.date, note: form.note || undefined })
-    setForm(f => ({ ...f, amount: '', note: '' }))
-    setShowForm(false)
-    await load()
-    setSaving(false)
+    try {
+      if (editingId) {
+        const updated = await expensesApi.patch(editingId, {
+          amount: parseFloat(form.amount),
+          category: form.category,
+          date: form.date,
+          note: form.note || undefined,
+        })
+        setExpenses(prev => prev.map(e => e.id === editingId ? updated : e))
+      } else {
+        await expensesApi.create({ baby_id: baby.id, amount: parseFloat(form.amount), category: form.category, date: form.date, note: form.note || undefined })
+        await load()
+      }
+      closeForm()
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function del(id: string) {
     await expensesApi.delete(id)
     setExpenses(p => p.filter(e => e.id !== id))
+    setSummary(s => s ? { ...s, total: s.total - (expenses.find(e => e.id === id)?.amount ?? 0) } : s)
   }
 
   const inputCls = 'bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-slate-100 text-sm outline-none focus:border-indigo-500/60 transition-all'
@@ -71,8 +105,10 @@ export default function ExpensesPage() {
             </button>
           )}
           {canEdit && (
-            <button onClick={() => setShowForm(f => !f)} className="glass px-3 py-2 flex items-center gap-1.5 rounded-xl text-sm text-slate-300">
-              <Plus className="w-4 h-4" /> Add
+            <button onClick={showForm && !editingId ? closeForm : openAdd}
+              className="glass px-3 py-2 flex items-center gap-1.5 rounded-xl text-sm text-slate-300">
+              {showForm && !editingId ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+              {showForm && !editingId ? 'Cancel' : 'Add'}
             </button>
           )}
         </div>
@@ -91,9 +127,12 @@ export default function ExpensesPage() {
         </div>
       </div>
 
-      {/* Add form */}
+      {/* Add / Edit form */}
       {showForm && (
         <div className="glass-strong p-4 flex flex-col gap-3 slide-up">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+            {editingId ? 'Edit Expense' : 'New Expense'}
+          </p>
           <div className="flex gap-2">
             <input className={`${inputCls} flex-1`} type="number" placeholder="Amount" value={form.amount}
               onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} />
@@ -110,11 +149,18 @@ export default function ExpensesPage() {
           </div>
           <input className={inputCls} placeholder="Note (optional)" value={form.note}
             onChange={e => setForm(f => ({ ...f, note: e.target.value }))} />
-          <button onClick={save} disabled={saving || !form.amount}
-            className="btn-glow bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50">
-            {saving && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-            Save Expense
-          </button>
+          <div className="flex gap-2">
+            <button onClick={closeForm}
+              className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-300 transition-colors"
+              style={{ background: 'rgba(255,255,255,0.06)' }}>
+              Cancel
+            </button>
+            <button onClick={save} disabled={saving || !form.amount}
+              className="flex-1 btn-glow bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-semibold py-2.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50">
+              {saving && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+              {editingId ? 'Save Changes' : 'Save Expense'}
+            </button>
+          </div>
         </div>
       )}
 
@@ -134,9 +180,14 @@ export default function ExpensesPage() {
               <p className="text-xs text-slate-500">{format(parseUTC(e.date), 'dd MMM')}</p>
             </div>
             {canEdit && (
-              <button onClick={() => del(e.id)} className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-red-400 transition-all ml-1">
-                <Trash2 className="w-4 h-4" />
-              </button>
+              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all ml-1">
+                <button onClick={() => openEdit(e)} className="text-slate-600 hover:text-indigo-400 transition-colors">
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={() => del(e.id)} className="text-slate-600 hover:text-red-400 transition-colors">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
             )}
           </div>
         ))}

@@ -57,6 +57,36 @@ def verify_user(user_id: str, admin: User = Depends(require_admin), db: Session 
     target.role = "verified"
     db.commit()
     db.refresh(target)
+
+    # Notify the verified user via push + Telegram (fire-and-forget)
+    _target_id = target.id
+    _target_name = target.display_name
+    _target_telegram = target.telegram_chat_id
+
+    def _notify_verified():
+        from app.database import SessionLocal
+        from app.services.notification_service import send_push_to_users
+        from app.services.telegram_service import send_telegram_message
+        _db = SessionLocal()
+        try:
+            send_push_to_users(
+                _db, [_target_id],
+                "✅ Account verified!",
+                "You can now log activities, add reminders, and more.",
+                url="/",
+            )
+            if _target_telegram:
+                send_telegram_message(
+                    _target_telegram,
+                    f"✅ <b>Your CryBaby account has been verified!</b>\n"
+                    f"Hi {_target_name}, you now have full access to log activities.",
+                )
+        finally:
+            _db.close()
+
+    import threading
+    threading.Thread(target=_notify_verified, daemon=True).start()
+
     return target
 
 
@@ -65,6 +95,39 @@ def unverify_user(user_id: str, admin: User = Depends(require_admin), db: Sessio
     target = _get_target(user_id, admin, db)
     target.is_verified = False
     target.role = "member"
+    db.commit()
+    db.refresh(target)
+    return target
+
+
+@router.patch("/users/{user_id}/promote", response_model=UserOut)
+def promote_to_admin(user_id: str, admin: User = Depends(require_super_admin), db: Session = Depends(get_db)):
+    """Promote a verified/member user to household admin. Super admin only."""
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        raise HTTPException(404, "User not found")
+    if target.id == admin.id:
+        raise HTTPException(400, "Cannot change your own role")
+    if target.role in ("super_admin", "admin"):
+        raise HTTPException(400, "User is already an admin")
+    target.role = "admin"
+    target.is_verified = True
+    db.commit()
+    db.refresh(target)
+    return target
+
+
+@router.patch("/users/{user_id}/demote", response_model=UserOut)
+def demote_from_admin(user_id: str, admin: User = Depends(require_super_admin), db: Session = Depends(get_db)):
+    """Demote a household admin to verified member. Super admin only."""
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        raise HTTPException(404, "User not found")
+    if target.id == admin.id:
+        raise HTTPException(400, "Cannot change your own role")
+    if target.role != "admin":
+        raise HTTPException(400, "User is not a household admin")
+    target.role = "verified"
     db.commit()
     db.refresh(target)
     return target

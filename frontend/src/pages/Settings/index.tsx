@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { User, Baby, Bell, LogOut, Users, ChevronDown, ChevronUp, Check, Loader2, Send, Camera, MessageCircle, Zap } from 'lucide-react'
+import { User, Baby, Bell, LogOut, Users, ChevronDown, ChevronUp, Check, Loader2, Send, Camera, MessageCircle, Zap, Pencil, Sun, Moon } from 'lucide-react'
+import { useThemeStore } from '@/store/themeStore'
 import { useAuthStore } from '@/store/authStore'
 import { useBaby } from '@/hooks/useBaby'
 import { usePushSubscription } from '@/hooks/usePushSubscription'
@@ -70,7 +71,8 @@ function AvatarUpload({
         <button
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
-          className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-violet-600 flex items-center justify-center shadow-lg border-2 border-[#0d0b18]"
+          className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-violet-600 flex items-center justify-center shadow-lg border-2"
+          style={{ borderColor: 'var(--color-bg)' }}
           title="Change photo"
         >
           <Camera className="w-3 h-3 text-white" />
@@ -121,6 +123,7 @@ function Row({ label, value }: { label: string; value?: string }) {
 }
 
 export default function SettingsPage() {
+  const { theme, toggle: toggleTheme } = useThemeStore()
   const { user, logout, setAuth, token } = useAuthStore()
   const { baby, refetch: refetchBaby } = useBaby()
   const { subscribed, subscribe, supported } = usePushSubscription()
@@ -130,6 +133,9 @@ export default function SettingsPage() {
   const [members, setMembers] = useState<UserOut[]>([])
   const [showMembers, setShowMembers] = useState(false)
   const [loadingMembers, setLoadingMembers] = useState(false)
+  const [householdName, setHouseholdName] = useState('')
+  const [editingHousehold, setEditingHousehold] = useState(false)
+  const [savingHousehold, setSavingHousehold] = useState(false)
   const [subscribing, setSubscribing] = useState(false)
   const [testingPush, setTestingPush] = useState(false)
   const [inviteCode, setInviteCode] = useState<string | null>(null)
@@ -210,9 +216,27 @@ export default function SettingsPage() {
     }
   }
 
+  const handleRenameHousehold = async () => {
+    const trimmed = householdName.trim()
+    if (!trimmed) return
+    setSavingHousehold(true)
+    try {
+      await authApi.renameHousehold(trimmed)
+      setEditingHousehold(false)
+      toast('Household renamed!', 'success')
+    } catch {
+      toast('Failed to rename household', 'error')
+    } finally {
+      setSavingHousehold(false)
+    }
+  }
+
   useEffect(() => {
     authApi.householdInviteCode()
-      .then(data => setInviteCode(data.invite_code.toUpperCase()))
+      .then(data => {
+        setInviteCode(data.invite_code.toUpperCase())
+        setHouseholdName(data.household_name)
+      })
       .catch(() => {})
     pushApi.botInfo()
       .then(data => setBotUsername(data.bot_username))
@@ -394,6 +418,46 @@ export default function SettingsPage() {
       {/* Household */}
       <div className="slide-up-4">
         <Section title="Household" icon={Users} color="text-violet-400">
+          {user?.role && ['admin', 'super_admin'].includes(user.role) && (
+            <div className="flex flex-col gap-2">
+              {editingHousehold ? (
+                <div className="flex gap-2">
+                  <input
+                    autoFocus
+                    type="text"
+                    value={householdName}
+                    onChange={e => setHouseholdName(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') handleRenameHousehold(); if (e.key === 'Escape') setEditingHousehold(false) }}
+                    className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-violet-500/50"
+                  />
+                  <button
+                    onClick={handleRenameHousehold}
+                    disabled={savingHousehold || !householdName.trim()}
+                    className="px-3 py-2 rounded-xl bg-violet-600 text-white text-xs font-semibold disabled:opacity-50 flex items-center gap-1 shrink-0"
+                  >
+                    {savingHousehold ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Save'}
+                  </button>
+                  <button
+                    onClick={() => setEditingHousehold(false)}
+                    className="px-3 py-2 rounded-xl bg-white/5 text-slate-400 text-xs hover:bg-white/10 transition-colors shrink-0"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setEditingHousehold(true)}
+                  className="bg-white/5 rounded-xl px-3 py-2 flex items-center justify-between w-full hover:bg-white/10 transition-colors"
+                >
+                  <span className="text-xs text-slate-400">Household name</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-200 font-medium">{householdName}</span>
+                    <Pencil className="w-3 h-3 text-slate-500" />
+                  </div>
+                </button>
+              )}
+            </div>
+          )}
           {inviteCode && (
             <button
               onClick={() => {
@@ -432,8 +496,39 @@ export default function SettingsPage() {
         </Section>
       </div>
 
-      {/* Sign out */}
+      {/* Appearance */}
       <div className="slide-up-5">
+        <Section title="Appearance" icon={theme === 'light' ? Sun : Moon} color={theme === 'light' ? 'text-amber-400' : 'text-indigo-400'}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-slate-300">{theme === 'light' ? 'Light mode' : 'Dark mode'}</p>
+              <p className="text-xs text-slate-500 mt-0.5">{theme === 'light' ? 'Pastel lavender' : 'Aurora dark'}</p>
+            </div>
+            <button
+              onClick={toggleTheme}
+              className={[
+                'relative w-14 h-7 rounded-full transition-all duration-300 focus:outline-none',
+                theme === 'dark'
+                  ? 'bg-gradient-to-r from-indigo-600 to-violet-600'
+                  : 'bg-gradient-to-r from-amber-300 to-violet-400',
+              ].join(' ')}
+              aria-label="Toggle theme"
+            >
+              <span className={[
+                'absolute top-0.5 w-6 h-6 rounded-full bg-white shadow-md transition-all duration-300 flex items-center justify-center',
+                theme === 'dark' ? 'left-7' : 'left-0.5',
+              ].join(' ')}>
+                {theme === 'light'
+                  ? <Sun className="w-3.5 h-3.5 text-amber-500" />
+                  : <Moon className="w-3.5 h-3.5 text-indigo-500" />}
+              </span>
+            </button>
+          </div>
+        </Section>
+      </div>
+
+      {/* Sign out */}
+      <div className="slide-up-6">
         <button
           onClick={handleLogout}
           className="w-full glass p-3.5 flex items-center justify-center gap-2 rounded-xl text-red-400 text-sm font-semibold hover:bg-red-500/10 transition-all"

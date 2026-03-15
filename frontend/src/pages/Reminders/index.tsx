@@ -97,7 +97,7 @@ function ReminderModal({ babyId, existing, onSaved, onClose }: ReminderModalProp
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
       <div
-        className="w-full max-w-md bg-slate-900 border border-white/10 rounded-t-3xl p-6 flex flex-col gap-4"
+        className="w-full max-w-md modal-surface rounded-t-3xl p-6 flex flex-col gap-4"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
@@ -128,7 +128,7 @@ function ReminderModal({ babyId, existing, onSaved, onClose }: ReminderModalProp
             className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500/50"
           >
             {Object.keys(TYPE_CFG).map(t => (
-              <option key={t} value={t} className="bg-slate-900">
+              <option key={t} value={t}>
                 {t.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
               </option>
             ))}
@@ -309,8 +309,7 @@ export default function RemindersPage() {
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
             onClick={() => setConfirmDelete(null)}>
-            <div className="w-full max-w-xs rounded-3xl p-6 flex flex-col gap-4"
-              style={{ background: '#120f22', border: '1px solid rgba(248,113,113,0.2)' }}
+            <div className="w-full max-w-xs modal-surface rounded-3xl p-6 flex flex-col gap-4"
               onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-center w-12 h-12 rounded-2xl mx-auto"
                 style={{ background: 'rgba(248,113,113,0.1)' }}>

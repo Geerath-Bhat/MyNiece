@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Shield, CheckCircle, Trash2, Loader2, Users, Baby, BarChart2, X, Crown, AlertTriangle, Home } from 'lucide-react'
+import { Shield, CheckCircle, Trash2, Loader2, Users, Baby, BarChart2, X, Crown, AlertTriangle, Home, ShieldPlus, ShieldMinus } from 'lucide-react'
 import { adminApi } from '@/api/auth'
 import type { UserOut, AdminStats, HouseholdOut } from '@/api/auth'
 import { useAuthStore } from '@/store/authStore'
@@ -57,7 +57,6 @@ export default function AdminPage() {
     return !['admin', 'super_admin'].includes(target.role)
   }
 
-  // Compute the warning scenario for a user about to be deleted
   const getDeleteWarning = (target: UserOut): DeleteWarning => {
     const householdMembers = users.filter(u => u.household_id === target.household_id)
     if (householdMembers.length === 1) return 'last_member'
@@ -79,6 +78,17 @@ export default function AdminPage() {
     } finally { setActing(null) }
   }
 
+  const handlePromote = async (u: UserOut) => {
+    setActing(u.id)
+    try {
+      const updated = u.role === 'admin' ? await adminApi.demote(u.id) : await adminApi.promote(u.id)
+      setUsers(prev => prev.map(x => x.id === u.id ? updated : x))
+      toast(u.role === 'admin' ? `${u.display_name} demoted to member` : `${u.display_name} promoted to admin`, 'success')
+    } catch {
+      toast('Failed to update role', 'error')
+    } finally { setActing(null) }
+  }
+
   const handleDelete = async (u: UserOut) => {
     setActing(u.id)
     try {
@@ -91,6 +101,65 @@ export default function AdminPage() {
       setActing(null)
     }
   }
+
+  // Reusable user row — inline render function to share state/handlers
+  const renderUserRow = (u: UserOut) => (
+    <div key={u.id} className="flex items-center gap-3 py-2.5 border-b border-white/5 last:border-0">
+      <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center shrink-0">
+        <span className="text-xs text-indigo-300 font-bold">{u.display_name.charAt(0).toUpperCase()}</span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-1.5">
+          <span className="text-sm font-medium text-slate-200 truncate">{u.display_name}</span>
+          {u.is_verified && (
+            <span title="Verified" className="inline-flex items-center gap-0.5 text-blue-400">
+              <CheckCircle className="w-3.5 h-3.5 fill-blue-400 text-blue-400" />
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-slate-500 truncate">{u.email}</p>
+      </div>
+      <RoleBadge role={u.role} />
+      {canManage(u) && (
+        <div className="flex items-center gap-1 shrink-0">
+          {u.role !== 'admin' && (
+            <button
+              onClick={() => handleVerify(u)}
+              disabled={acting === u.id}
+              title={u.is_verified ? 'Revoke verification' : 'Verify user'}
+              className={`p-1.5 rounded-lg transition-all ${u.is_verified ? 'text-blue-400 hover:bg-blue-500/10' : 'text-slate-600 hover:text-blue-400 hover:bg-blue-500/10'}`}
+            >
+              {acting === u.id
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : <CheckCircle className="w-3.5 h-3.5" />}
+            </button>
+          )}
+          {isSuperAdmin && u.role !== 'super_admin' && (
+            <button
+              onClick={() => handlePromote(u)}
+              disabled={acting === u.id}
+              title={u.role === 'admin' ? 'Demote to member' : 'Promote to admin'}
+              className={`p-1.5 rounded-lg transition-all ${u.role === 'admin' ? 'text-amber-400 hover:bg-amber-500/10' : 'text-slate-600 hover:text-amber-400 hover:bg-amber-500/10'}`}
+            >
+              {acting === u.id
+                ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                : u.role === 'admin'
+                  ? <ShieldMinus className="w-3.5 h-3.5" />
+                  : <ShieldPlus className="w-3.5 h-3.5" />}
+            </button>
+          )}
+          <button
+            onClick={() => setConfirmDelete(u)}
+            disabled={acting === u.id}
+            title="Delete user"
+            className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+    </div>
+  )
 
   if (loading) return <div className="flex justify-center mt-20"><Loader2 className="w-6 h-6 text-indigo-400 animate-spin" /></div>
 
@@ -130,52 +199,33 @@ export default function AdminPage() {
         )}
 
         {/* User list */}
-        <div className="glass-strong p-4 flex flex-col gap-1 slide-up-2">
-          <p className="text-sm font-semibold text-slate-200 mb-2">
-            {isSuperAdmin ? 'All Users' : 'Your Household Members'}
-          </p>
-          {users.map(u => (
-            <div key={u.id} className="flex items-center gap-3 py-2.5 border-b border-white/5 last:border-0">
-              <div className="w-8 h-8 rounded-full bg-indigo-500/20 flex items-center justify-center shrink-0">
-                <span className="text-xs text-indigo-300 font-bold">{u.display_name.charAt(0).toUpperCase()}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-sm font-medium text-slate-200 truncate">{u.display_name}</span>
-                  {u.is_verified && (
-                    <span title="Verified" className="inline-flex items-center gap-0.5 text-blue-400">
-                      <CheckCircle className="w-3.5 h-3.5 fill-blue-400 text-slate-900" />
-                    </span>
-                  )}
+        {isSuperAdmin ? (
+          // Grouped by household for super_admin
+          <>
+            {households.map(hh => {
+              const hUsers = users.filter(u => u.household_id === hh.id)
+              if (hUsers.length === 0) return null
+              return (
+                <div key={hh.id} className="glass-strong p-4 flex flex-col gap-1 slide-up-2">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-5 h-5 rounded-md bg-fuchsia-500/20 flex items-center justify-center shrink-0">
+                      <span className="text-[10px] text-fuchsia-300 font-bold">{hh.name.charAt(0).toUpperCase()}</span>
+                    </div>
+                    <p className="text-sm font-semibold text-slate-200">{hh.name}</p>
+                    <span className="text-xs text-slate-600 ml-auto">{hUsers.length} member{hUsers.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  {hUsers.map(renderUserRow)}
                 </div>
-                <p className="text-xs text-slate-500 truncate">{u.email}</p>
-              </div>
-              <RoleBadge role={u.role} />
-              {canManage(u) && (
-                <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    onClick={() => handleVerify(u)}
-                    disabled={acting === u.id}
-                    title={u.is_verified ? 'Revoke verification' : 'Verify user'}
-                    className={`p-1.5 rounded-lg transition-all ${u.is_verified ? 'text-blue-400 hover:bg-blue-500/10' : 'text-slate-600 hover:text-blue-400 hover:bg-blue-500/10'}`}
-                  >
-                    {acting === u.id
-                      ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      : <CheckCircle className="w-3.5 h-3.5" />}
-                  </button>
-                  <button
-                    onClick={() => setConfirmDelete(u)}
-                    disabled={acting === u.id}
-                    title="Delete user"
-                    className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+              )
+            })}
+          </>
+        ) : (
+          // Flat list for household admin
+          <div className="glass-strong p-4 flex flex-col gap-1 slide-up-2">
+            <p className="text-sm font-semibold text-slate-200 mb-2">Your Household Members</p>
+            {users.map(renderUserRow)}
+          </div>
+        )}
 
         <p className="text-center text-xs text-slate-700 pb-2">
           {isSuperAdmin ? 'Super Admin' : 'Household Admin'} · {user?.email}
@@ -186,11 +236,9 @@ export default function AdminPage() {
       {confirmDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
           onClick={() => setConfirmDelete(null)}>
-          <div className="w-full max-w-sm rounded-3xl p-6 flex flex-col gap-4"
-            style={{ background: '#120f22', border: `1px solid ${warning === 'last_member' ? 'rgba(251,191,36,0.3)' : 'rgba(248,113,113,0.2)'}` }}
+          <div className="w-full max-w-sm modal-surface rounded-3xl p-6 flex flex-col gap-4"
             onClick={e => e.stopPropagation()}>
 
-            {/* Header */}
             <div className="flex items-start justify-between">
               <div className="w-12 h-12 rounded-2xl flex items-center justify-center"
                 style={{ background: warning === 'last_member' ? 'rgba(251,191,36,0.1)' : 'rgba(248,113,113,0.1)' }}>
@@ -203,7 +251,6 @@ export default function AdminPage() {
               </button>
             </div>
 
-            {/* Content */}
             <div className="flex flex-col gap-2">
               {warning === 'last_member' && (
                 <>
@@ -222,7 +269,6 @@ export default function AdminPage() {
                   </div>
                 </>
               )}
-
               {warning === 'only_admin' && (
                 <>
                   <p className="text-base font-bold text-white">Delete admin?</p>
@@ -240,7 +286,6 @@ export default function AdminPage() {
                   </div>
                 </>
               )}
-
               {warning === 'normal' && (
                 <>
                   <p className="text-base font-bold text-white">Delete user?</p>
@@ -252,7 +297,6 @@ export default function AdminPage() {
               )}
             </div>
 
-            {/* Actions */}
             <div className="flex gap-2">
               <button
                 onClick={() => setConfirmDelete(null)}
@@ -265,9 +309,7 @@ export default function AdminPage() {
                 onClick={() => handleDelete(confirmDelete)}
                 disabled={acting === confirmDelete.id}
                 className={`flex-1 py-2.5 rounded-xl text-sm font-semibold text-white transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 ${
-                  warning === 'last_member'
-                    ? 'bg-amber-500 hover:bg-amber-600'
-                    : 'bg-red-500 hover:bg-red-600'
+                  warning === 'last_member' ? 'bg-amber-500 hover:bg-amber-600' : 'bg-red-500 hover:bg-red-600'
                 }`}
               >
                 {acting === confirmDelete.id && <Loader2 className="w-3.5 h-3.5 animate-spin" />}

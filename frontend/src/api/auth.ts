@@ -79,12 +79,20 @@ export const authApi = {
 
   removeMember: (userId: string) =>
     api.delete(`/auth/household/members/${userId}`),
+
+  requestVerification: () =>
+    api.post('/auth/request-verification'),
+
+  renameHousehold: (name: string) =>
+    api.patch<HouseholdOut>('/auth/household', { name }).then((r) => r.data),
 }
 
 export const adminApi = {
   users: () => api.get<UserOut[]>('/admin/users').then(r => r.data),
   verify: (userId: string) => api.patch<UserOut>(`/admin/users/${userId}/verify`).then(r => r.data),
   unverify: (userId: string) => api.patch<UserOut>(`/admin/users/${userId}/unverify`).then(r => r.data),
+  promote: (userId: string) => api.patch<UserOut>(`/admin/users/${userId}/promote`).then(r => r.data),
+  demote: (userId: string) => api.patch<UserOut>(`/admin/users/${userId}/demote`).then(r => r.data),
   deleteUser: (userId: string) => api.delete(`/admin/users/${userId}`),
   stats: () => api.get<AdminStats>('/admin/stats').then(r => r.data),
   households: () => api.get<HouseholdOut[]>('/admin/households').then(r => r.data),

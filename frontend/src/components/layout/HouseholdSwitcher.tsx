@@ -30,8 +30,9 @@ export function HouseholdSwitcher() {
   const select = (h: HouseholdOut) => {
     // Selecting own household clears the override so no ?as_household is sent
     setSelectedHousehold(h.id === user?.household_id ? null : h)
+    // Always clear the active baby so useBaby picks the correct baby from the new household
+    useAuthStore.getState().setActiveBabyId(null)
     setOpen(false)
-    // Reload so all data refetches with the new household context
     window.location.reload()
   }
 
@@ -51,8 +52,7 @@ export function HouseholdSwitcher() {
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 mt-1 z-50 rounded-xl overflow-hidden shadow-xl"
-          style={{ background: '#120f22', border: '1px solid rgba(217,70,239,0.2)' }}>
+        <div className="absolute left-0 right-0 mt-1 z-50 rounded-xl overflow-hidden dropdown-surface">
           {households.map(h => {
             const isActive = (selectedHousehold?.id ?? user?.household_id) === h.id
             return (
