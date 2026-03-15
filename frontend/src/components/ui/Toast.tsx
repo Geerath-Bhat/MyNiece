@@ -28,9 +28,8 @@ export function Toast({ message, type = 'info', duration = 3000, onClose }: Toas
 
   return (
     <div
-      className="flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl max-w-xs"
+      className="flex items-center gap-3 px-4 py-3 rounded-2xl shadow-2xl max-w-xs dark:bg-[#1a1630] bg-white"
       style={{
-        background: '#1a1630',
         border: `1px solid ${borderColor}`,
         transform: visible ? 'translateY(0)' : 'translateY(20px)',
         opacity: visible ? 1 : 0,
@@ -38,7 +37,7 @@ export function Toast({ message, type = 'info', duration = 3000, onClose }: Toas
       }}
     >
       <Icon className={`w-5 h-5 shrink-0 ${iconColor}`} />
-      <p className="text-sm text-slate-200 flex-1">{message}</p>
+      <p className="text-sm dark:text-slate-200 text-slate-700 flex-1">{message}</p>
       <button onClick={() => { setVisible(false); setTimeout(onClose, 300) }}>
         <X className="w-4 h-4 text-slate-500 hover:text-slate-300 transition-colors" />
       </button>

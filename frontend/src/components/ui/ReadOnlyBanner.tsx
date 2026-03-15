@@ -33,14 +33,14 @@ export function ReadOnlyBanner() {
 
   return (
     <div className="flex flex-col gap-2 px-4 py-3 rounded-2xl"
-      style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)' }}>
+      style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.3)' }}>
       <div className="flex items-start gap-3">
-        <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+        <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-amber-200">
+          <p className="text-xs dark:text-amber-200 text-amber-800">
             Your account is <span className="font-semibold">pending verification</span>.
             {admin
-              ? <> Contact <span className="font-semibold text-white">{admin.display_name}</span> to get verified, or tap below to notify them.</>
+              ? <> Contact <span className="font-semibold dark:text-white text-amber-900">{admin.display_name}</span> to get verified, or tap below to notify them.</>
               : <> Ask your household admin to verify you.</>
             }
             {' '}Until then you can view but not make changes.
@@ -51,8 +51,8 @@ export function ReadOnlyBanner() {
         <button
           onClick={handleNotify}
           disabled={notifying}
-          className="flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-xs font-medium text-amber-300 transition-colors disabled:opacity-50"
-          style={{ background: 'rgba(251,191,36,0.12)', border: '1px solid rgba(251,191,36,0.2)' }}
+          className="flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-xs font-medium dark:text-amber-300 text-amber-700 transition-colors disabled:opacity-50"
+          style={{ background: 'rgba(251,191,36,0.15)', border: '1px solid rgba(251,191,36,0.3)' }}
         >
           {notifying
             ? <Loader2 className="w-3 h-3 animate-spin" />
@@ -60,7 +60,7 @@ export function ReadOnlyBanner() {
           {notifying ? 'Notifying…' : 'Notify Admin'}
         </button>
       ) : (
-        <p className="text-center text-xs text-amber-500">✓ Admin notified — they'll verify you soon</p>
+        <p className="text-center text-xs text-amber-600">✓ Admin notified — they'll verify you soon</p>
       )}
     </div>
   )

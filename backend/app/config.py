@@ -23,15 +23,17 @@ class Settings(BaseSettings):
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""
 
-    # Email OTP (Gmail SMTP)
-    smtp_host: str = "smtp.gmail.com"
-    smtp_port: int = 465
-    smtp_user: str = ""           # SMTP_USER in .env  (your Gmail address)
-    smtp_password: str = ""       # SMTP_PASSWORD in .env  (Gmail App Password)
+    # Email OTP (Resend — preferred) or Gmail SMTP fallback
+    resend_api_key: str = ""      # RESEND_API_KEY in .env  (resend.com free tier)
+    smtp_host: str = "smtp-relay.brevo.com"
+    smtp_port: int = 587
+    smtp_user: str = ""           # SMTP_USER in .env  (Brevo SMTP login)
+    smtp_password: str = ""       # SMTP_PASSWORD in .env  (Brevo SMTP password)
+    smtp_from: str = ""           # SMTP_FROM in .env  (verified sender email in Brevo)
 
     @property
     def otp_enabled(self) -> bool:
-        return bool(self.smtp_user and self.smtp_password)
+        return bool(self.resend_api_key or (self.smtp_user and self.smtp_password))
 
     # Global super-admin: this email always gets super_admin role on register/login
     super_admin_email: str = ""
