@@ -215,6 +215,7 @@ export default function DashboardPage() {
         lastFedAt={lastFedAt ?? undefined}
         intervalMinutes={intervalMinutes}
         onLogFeed={logFeed}
+        canEdit={canEdit}
       />
 
       {/* ── Quick Log Grid ──────────────────────────────────────── */}

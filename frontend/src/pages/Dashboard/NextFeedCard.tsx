@@ -5,6 +5,7 @@ interface Props {
   lastFedAt?: Date
   intervalMinutes?: number
   onLogFeed: () => void
+  canEdit?: boolean
 }
 
 function pad(n: number) { return String(n).padStart(2, '0') }
@@ -18,7 +19,7 @@ function formatCountdown(msLeft: number) {
   return { h: pad(h), m: pad(m), s: pad(s), overdue: false }
 }
 
-export function NextFeedCard({ lastFedAt, intervalMinutes = 150, onLogFeed }: Props) {
+export function NextFeedCard({ lastFedAt, intervalMinutes = 150, onLogFeed, canEdit = true }: Props) {
   const [, setTick] = useState(0)
 
   useEffect(() => {
@@ -100,13 +101,15 @@ export function NextFeedCard({ lastFedAt, intervalMinutes = 150, onLogFeed }: Pr
               {(intervalMinutes / 60).toFixed(1)}h
             </p>
           </div>
-          <button
-            onClick={onLogFeed}
-            className="btn-glow flex items-center justify-center gap-1.5 bg-gradient-to-r from-violet-600 to-purple-600 text-white text-xs font-semibold py-2.5 px-4 rounded-xl"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Log Feed
-          </button>
+          {canEdit && (
+            <button
+              onClick={onLogFeed}
+              className="btn-glow flex items-center justify-center gap-1.5 bg-gradient-to-r from-violet-600 to-purple-600 text-white text-xs font-semibold py-2.5 px-4 rounded-xl"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Log Feed
+            </button>
+          )}
         </div>
       </div>
     </div>

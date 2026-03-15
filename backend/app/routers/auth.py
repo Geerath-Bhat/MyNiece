@@ -141,8 +141,8 @@ def login(body: LoginRequest, background_tasks: BackgroundTasks, db: Session = D
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    # If SMTP not configured, skip OTP and return token directly
-    if not settings.otp_enabled:
+    # If SMTP not configured OR user is already verified, skip OTP and return token directly
+    if not settings.otp_enabled or user.is_verified:
         token = create_access_token({"sub": user.id})
         return RegisterResponse(access_token=token, user=UserOut.model_validate(user))
 

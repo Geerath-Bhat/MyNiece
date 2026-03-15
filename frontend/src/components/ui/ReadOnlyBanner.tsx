@@ -37,10 +37,10 @@ export function ReadOnlyBanner() {
       <div className="flex items-start gap-3">
         <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
-          <p className="text-xs text-amber-300">
+          <p className="text-xs text-amber-200">
             Your account is <span className="font-semibold">pending verification</span>.
             {admin
-              ? <> Contact <span className="font-semibold text-amber-200">{admin.display_name}</span> to get verified, or tap below to notify them.</>
+              ? <> Contact <span className="font-semibold text-white">{admin.display_name}</span> to get verified, or tap below to notify them.</>
               : <> Ask your household admin to verify you.</>
             }
             {' '}Until then you can view but not make changes.
