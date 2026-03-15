@@ -52,11 +52,16 @@ def _strip_fences(raw: str) -> str:
 
 
 async def call_llm(transcript: str, tz: str, baby_name: str) -> dict:
-    now = datetime.now(timezone.utc)
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+    try:
+        user_tz = ZoneInfo(tz) if tz else timezone.utc
+    except ZoneInfoNotFoundError:
+        user_tz = timezone.utc
+    now = datetime.now(user_tz)
     system = SYSTEM_PROMPT.format(
         today=now.strftime("%Y-%m-%d"),
         current_time=now.strftime("%H:%M"),
-        timezone=tz,
+        timezone=tz or "UTC",
         baby_name=baby_name,
     )
     user_msg = f'Transcript: "{transcript}"'
@@ -152,6 +157,9 @@ async def interpret(db: Session, transcript: str, baby_id: str, user_id: str, us
             db.commit()
             return result
 
+        from app.services.event_bus import publish
+        from app.schemas.log import ActivityLogOut
+
         match intent:
             case "log_feed":
                 ts = _parse_ts(entities.get("timestamp"))
@@ -164,6 +172,7 @@ async def interpret(db: Session, transcript: str, baby_id: str, user_id: str, us
                 result.log_id = log.id
                 result.action_taken = "feed_logged"
                 result.success = True
+                publish(baby.household_id, {"type": "activity_log", "payload": ActivityLogOut.model_validate(log).model_dump(mode="json")})
                 _notify_async(baby_id, "🍼 Feed logged (voice)", f"Logged via voice for {baby.name}")
 
             case "log_diaper":
@@ -177,6 +186,7 @@ async def interpret(db: Session, transcript: str, baby_id: str, user_id: str, us
                 result.log_id = log.id
                 result.action_taken = "diaper_logged"
                 result.success = True
+                publish(baby.household_id, {"type": "activity_log", "payload": ActivityLogOut.model_validate(log).model_dump(mode="json")})
                 _notify_async(baby_id, "🧷 Diaper logged (voice)", f"Logged via voice for {baby.name}")
 
             case "log_custom":
@@ -186,10 +196,12 @@ async def interpret(db: Session, transcript: str, baby_id: str, user_id: str, us
                                   notes=entities.get("notes"))
                 db.add(log)
                 db.commit()
+                db.refresh(log)
                 result.log_id = log.id
                 result.action_taken = "custom_logged"
                 result.success = True
                 label = entities.get("custom_label") or "Activity"
+                publish(baby.household_id, {"type": "activity_log", "payload": ActivityLogOut.model_validate(log).model_dump(mode="json")})
                 _notify_async(baby_id, f"📝 {label} (voice)", f"Logged via voice for {baby.name}")
 
             case "update_reminder":

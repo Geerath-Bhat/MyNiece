@@ -13,7 +13,7 @@ export default function Register() {
   const setAuth = useAuthStore((s) => s.setAuth)
   const [mode, setMode] = useState<Mode>('create')
   const [form, setForm] = useState({
-    email: '', password: '', display_name: '',
+    email: '', password: '', confirm_password: '', display_name: '',
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     household_name: '', invite_code: '',
   })
@@ -23,6 +23,10 @@ export default function Register() {
   async function handleSubmit(e: { preventDefault(): void }) {
     e.preventDefault()
     setError('')
+    if (form.password !== form.confirm_password) {
+      setError('Passwords do not match')
+      return
+    }
     setLoading(true)
     try {
       const payload = {
@@ -79,6 +83,7 @@ export default function Register() {
           {field('Your Name', 'display_name', { placeholder: 'Parent name', required: true })}
           {field('Email', 'email', { type: 'email', autoComplete: 'email', placeholder: 'you@example.com', required: true })}
           {field('Password', 'password', { type: 'password', autoComplete: 'new-password', placeholder: '••••••••', required: true })}
+          {field('Confirm Password', 'confirm_password', { type: 'password', autoComplete: 'new-password', placeholder: '••••••••', required: true })}
 
           {mode === 'create'
             ? field('Household Name', 'household_name', { placeholder: 'e.g. Smith Family', required: true })
