@@ -20,8 +20,14 @@ function speak(text: string) {
   if (!('speechSynthesis' in window)) return
   window.speechSynthesis.cancel()
   const utt = new SpeechSynthesisUtterance(text)
-  utt.rate = 0.95
-  utt.pitch = 1.0
+  utt.rate = 0.88
+  utt.pitch = 1.6
+  // Prefer a female/soft voice if available
+  const voices = window.speechSynthesis.getVoices()
+  const preferred = voices.find(v =>
+    /female|zira|samantha|karen|moira|fiona|victoria|google uk english female/i.test(v.name)
+  )
+  if (preferred) utt.voice = preferred
   window.speechSynthesis.speak(utt)
 }
 
@@ -41,7 +47,7 @@ export default function VoicePage() {
       setResult(r)
       if (ttsEnabled && r.response_message) speak(r.response_message)
     } catch {
-      const errMsg = 'Failed to process. Check that GEMINI_API_KEY is set in the backend.'
+      const errMsg = 'Could not reach the server. Please try again.'
       setResult({ intent: 'error', entities: {}, action_taken: 'none', response_message: errMsg, success: false })
       if (ttsEnabled) speak(errMsg)
     } finally {
@@ -112,10 +118,12 @@ export default function VoicePage() {
       )}
 
       {/* Live transcript */}
-      {(listening && interim) && (
-        <div className="glass-strong w-full p-4 text-left slide-up-2">
-          <p className="text-xs text-slate-500 mb-1">Hearing...</p>
-          <p className="text-slate-300 text-sm italic">{interim}</p>
+      {listening && (
+        <div className="glass-strong w-full p-4 text-left slide-up-2 min-h-[64px]">
+          <p className="text-xs text-slate-500 mb-1">Hearing…</p>
+          <p className="text-slate-300 text-sm italic">
+            {interim || <span className="text-slate-600">Start speaking…</span>}
+          </p>
         </div>
       )}
 

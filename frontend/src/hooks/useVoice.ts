@@ -25,7 +25,6 @@ function getSpeechRecognition(): (new () => SpeechRec) | null {
   return w['SpeechRecognition'] ?? w['webkitSpeechRecognition'] ?? null
 }
 
-// Human-readable error labels for SpeechRecognition error codes
 const ERROR_LABELS: Record<string, string> = {
   'not-allowed': 'Microphone permission denied. Allow mic access in browser settings.',
   'no-speech': 'No speech detected. Try speaking louder or closer to the mic.',
@@ -35,6 +34,9 @@ const ERROR_LABELS: Record<string, string> = {
   'service-not-allowed': 'Speech recognition blocked. Use HTTPS or localhost.',
 }
 
+// Wait this long after last word before submitting
+const SILENCE_DELAY = 2000
+
 interface UseVoiceOptions {
   onResult: (transcript: string) => void
   lang?: string
@@ -42,10 +44,25 @@ interface UseVoiceOptions {
 
 export function useVoice({ onResult, lang = 'en-US' }: UseVoiceOptions) {
   const [listening, setListening] = useState(false)
-  const [interim, setInterim] = useState('')
+  const [interim, setInterim] = useState('')   // live text shown on screen
   const [error, setError] = useState('')
   const [supported] = useState(() => !!getSpeechRecognition())
   const recRef = useRef<SpeechRec | null>(null)
+  const finalRef = useRef('')                  // accumulated confirmed words
+  const silenceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const clearTimer = () => {
+    if (silenceTimer.current) clearTimeout(silenceTimer.current)
+  }
+
+  const submit = useCallback((rec: SpeechRec) => {
+    const text = finalRef.current.trim()
+    finalRef.current = ''
+    if (text) {
+      rec.stop()
+      onResult(text)
+    }
+  }, [onResult])
 
   const start = useCallback(() => {
     if (!supported || listening) return
@@ -53,50 +70,67 @@ export function useVoice({ onResult, lang = 'en-US' }: UseVoiceOptions) {
     if (!SR) return
 
     setError('')
+    setInterim('')
+    finalRef.current = ''
+
     const rec = new SR()
-    rec.continuous = true        // keep listening until user taps Stop
+    rec.continuous = true
     rec.interimResults = true
     rec.lang = lang
 
     rec.onstart = () => setListening(true)
 
     rec.onend = () => {
+      clearTimer()
       setListening(false)
       setInterim('')
+      finalRef.current = ''
     }
 
     rec.onresult = (e) => {
-      let final = '', inter = ''
+      let inter = ''
       for (let i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) final += e.results[i][0].transcript
-        else inter += e.results[i][0].transcript
+        if (e.results[i].isFinal) {
+          finalRef.current += e.results[i][0].transcript + ' '
+        } else {
+          inter += e.results[i][0].transcript
+        }
       }
-      setInterim(inter)
-      if (final.trim()) {
-        onResult(final.trim())
-        // Stop after we get a final result so LLM can process it
-        rec.stop()
+      // Show everything the user has said so far
+      setInterim((finalRef.current + inter).trim())
+
+      // Reset silence timer — submit 2s after the last word
+      clearTimer()
+      if (finalRef.current.trim()) {
+        silenceTimer.current = setTimeout(() => submit(rec), SILENCE_DELAY)
       }
     }
 
     rec.onerror = (e) => {
       const msg = ERROR_LABELS[e.error] ?? `Speech error: ${e.error}`
       if (msg) setError(msg)
+      clearTimer()
       setListening(false)
       setInterim('')
+      finalRef.current = ''
     }
 
     recRef.current = rec
     try {
       rec.start()
-    } catch (e) {
+    } catch {
       setError('Could not start microphone. Is another app using it?')
     }
-  }, [listening, supported, lang, onResult])
+  }, [listening, supported, lang, submit])
 
   const stop = useCallback(() => {
+    clearTimer()
+    // If user manually stops, submit whatever we have
+    const text = finalRef.current.trim()
+    finalRef.current = ''
     recRef.current?.stop()
-  }, [])
+    if (text) onResult(text)
+  }, [onResult])
 
   return { listening, interim, supported, error, start, stop }
 }

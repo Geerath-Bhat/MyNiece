@@ -14,15 +14,17 @@ logger = logging.getLogger(__name__)
 SYSTEM_PROMPT = """You are an intent extraction engine for a baby care tracking app.
 Extract the user's intent from the voice transcript and return ONLY valid JSON.
 
-Today is {today}. Current time: {current_time} ({timezone}).
+User's local time: {current_time} ({timezone}). UTC time: {utc_time}.
+Today's local date: {today}.
 Baby name: {baby_name}.
 
 IMPORTANT RULES:
 1. If the transcript is NOT related to baby care (feeding, diapers, sleep, reminders, health), set intent to "irrelevant".
 2. If you are unsure or confidence is below 0.6, set intent to "unknown".
 3. Examples of IRRELEVANT inputs: "I am going to market", "what's the weather", "play music", "call mom".
-4. For timestamps: "at 3pm" means today at 15:00, "an hour ago" means {current_time} minus 60 minutes.
+4. For timestamps: ALWAYS return UTC ISO 8601. "just now" → {utc_time}. "an hour ago" → subtract 60 min from {utc_time}. "at 3pm" means today 3pm local converted to UTC.
 5. For feeding interval changes: "change feeding to every 4 hours" → interval_minutes = 240.
+6. In response_message, use the USER'S LOCAL TIME (not UTC) when mentioning times. Only mention time when you actually logged an activity (e.g. "Feed logged at 02:15"). For errors, irrelevant or unknown intents, keep the message short and do NOT mention the current time.
 
 Return JSON with this exact shape:
 {{
@@ -57,11 +59,13 @@ async def call_llm(transcript: str, tz: str, baby_name: str) -> dict:
         user_tz = ZoneInfo(tz) if tz else timezone.utc
     except ZoneInfoNotFoundError:
         user_tz = timezone.utc
-    now = datetime.now(user_tz)
+    now_local = datetime.now(user_tz)
+    now_utc = datetime.now(timezone.utc)
     system = SYSTEM_PROMPT.format(
-        today=now.strftime("%Y-%m-%d"),
-        current_time=now.strftime("%H:%M"),
+        today=now_local.strftime("%Y-%m-%d"),
+        current_time=now_local.strftime("%H:%M"),
         timezone=tz or "UTC",
+        utc_time=now_utc.strftime("%Y-%m-%dT%H:%M:%S"),
         baby_name=baby_name,
     )
     user_msg = f'Transcript: "{transcript}"'
