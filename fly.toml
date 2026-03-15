@@ -1,5 +1,5 @@
 app = "crybaby-api"
-primary_region = "sin"   # Singapore — change to nearest: lax, iad, lhr, fra, nrt…
+primary_region = "bom"   # Mumbai — change to nearest: sin, lax, iad, lhr, fra, nrt…
 
 [build]
   dockerfile = "backend/Dockerfile"
