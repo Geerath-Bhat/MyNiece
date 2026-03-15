@@ -19,14 +19,14 @@ self.addEventListener('push', (event) => {
   }
 
   const title = data.title ?? 'CryBaby'
-  const options: NotificationOptions = {
+  const options = {
     body: data.body ?? '',
     icon: data.icon ?? '/icons/icon-192.png',
     badge: data.badge ?? '/icons/icon-192.png',
     data: { url: data.data?.url ?? '/' },
     vibrate: [200, 100, 200],
     requireInteraction: false,
-  }
+  } as NotificationOptions
 
   event.waitUntil(self.registration.showNotification(title, options))
 })
