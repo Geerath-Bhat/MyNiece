@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.dependencies import get_current_user, require_verified
+from app.dependencies import get_current_user, require_verified, get_effective_household_id
 from app.models.baby import Baby, WeightLog
 from app.models.user import User
 from app.schemas.baby import BabyIn, BabyOut, BabyPatch, WeightLogIn, WeightLogOut
@@ -9,21 +9,30 @@ from app.schemas.baby import BabyIn, BabyOut, BabyPatch, WeightLogIn, WeightLogO
 router = APIRouter(prefix="/babies", tags=["babies"])
 
 
-def _assert_baby(db: Session, baby_id: str, user: User) -> Baby:
-    baby = db.query(Baby).get(baby_id)
-    if not baby or baby.household_id != user.household_id:
+def _assert_baby(db: Session, baby_id: str, household_id: str) -> Baby:
+    baby = db.query(Baby).filter(Baby.id == baby_id).first()
+    if not baby or baby.household_id != household_id:
         raise HTTPException(404, "Baby not found")
     return baby
 
 
 @router.get("", response_model=list[BabyOut])
-def list_babies(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return db.query(Baby).filter(Baby.household_id == user.household_id).all()
+def list_babies(
+    user: User = Depends(get_current_user),
+    household_id: str = Depends(get_effective_household_id),
+    db: Session = Depends(get_db),
+):
+    return db.query(Baby).filter(Baby.household_id == household_id).all()
 
 
 @router.post("", response_model=BabyOut, status_code=201)
-def create_baby(body: BabyIn, user: User = Depends(require_verified), db: Session = Depends(get_db)):
-    baby = Baby(household_id=user.household_id, **body.model_dump())
+def create_baby(
+    body: BabyIn,
+    user: User = Depends(require_verified),
+    household_id: str = Depends(get_effective_household_id),
+    db: Session = Depends(get_db),
+):
+    baby = Baby(household_id=household_id, **body.model_dump())
     db.add(baby)
     db.commit()
     db.refresh(baby)
@@ -48,13 +57,23 @@ def create_baby(body: BabyIn, user: User = Depends(require_verified), db: Sessio
 
 
 @router.get("/{baby_id}", response_model=BabyOut)
-def get_baby(baby_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return _assert_baby(db, baby_id, user)
+def get_baby(
+    baby_id: str,
+    household_id: str = Depends(get_effective_household_id),
+    db: Session = Depends(get_db),
+):
+    return _assert_baby(db, baby_id, household_id)
 
 
 @router.patch("/{baby_id}", response_model=BabyOut)
-def patch_baby(baby_id: str, body: BabyPatch, user: User = Depends(require_verified), db: Session = Depends(get_db)):
-    baby = _assert_baby(db, baby_id, user)
+def patch_baby(
+    baby_id: str,
+    body: BabyPatch,
+    user: User = Depends(require_verified),
+    household_id: str = Depends(get_effective_household_id),
+    db: Session = Depends(get_db),
+):
+    baby = _assert_baby(db, baby_id, household_id)
     for k, v in body.model_dump(exclude_none=True).items():
         setattr(baby, k, v)
     db.commit()
@@ -65,17 +84,26 @@ def patch_baby(baby_id: str, body: BabyPatch, user: User = Depends(require_verif
 # ── Weight logs ────────────────────────────────────────────────
 
 @router.get("/{baby_id}/weight", response_model=list[WeightLogOut])
-def list_weight(baby_id: str, limit: int = 30,
-                user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    _assert_baby(db, baby_id, user)
+def list_weight(
+    baby_id: str,
+    limit: int = 30,
+    household_id: str = Depends(get_effective_household_id),
+    db: Session = Depends(get_db),
+):
+    _assert_baby(db, baby_id, household_id)
     return (db.query(WeightLog).filter(WeightLog.baby_id == baby_id)
             .order_by(WeightLog.date.desc()).limit(limit).all())
 
 
 @router.post("/{baby_id}/weight", response_model=WeightLogOut, status_code=201)
-def add_weight(baby_id: str, body: WeightLogIn,
-               user: User = Depends(require_verified), db: Session = Depends(get_db)):
-    _assert_baby(db, baby_id, user)
+def add_weight(
+    baby_id: str,
+    body: WeightLogIn,
+    user: User = Depends(require_verified),
+    household_id: str = Depends(get_effective_household_id),
+    db: Session = Depends(get_db),
+):
+    _assert_baby(db, baby_id, household_id)
     w = WeightLog(baby_id=baby_id, logged_by=user.id, **body.model_dump())
     db.add(w)
     db.commit()

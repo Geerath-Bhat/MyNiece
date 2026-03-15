@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     def otp_enabled(self) -> bool:
         return bool(self.smtp_user and self.smtp_password)
 
+    # Global super-admin: this email always gets super_admin role on register/login
+    super_admin_email: str = ""
+
     cors_origins: list[str] = ["http://localhost:5173"]
 
     class Config:

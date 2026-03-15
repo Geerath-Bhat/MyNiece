@@ -50,6 +50,15 @@ class VerifyOTPRequest(BaseModel):
     code: str
 
 
+class HouseholdOut(BaseModel):
+    id: str
+    name: str
+    invite_code: str
+
+    class Config:
+        from_attributes = True
+
+
 class PatchMeRequest(BaseModel):
     display_name: str | None = None
     timezone: str | None = None

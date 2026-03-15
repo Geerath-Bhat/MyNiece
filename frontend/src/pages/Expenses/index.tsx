@@ -3,6 +3,8 @@ import { Plus, DollarSign, Loader2, Trash2, Download } from 'lucide-react'
 import { expensesApi } from '@/api/expenses'
 import type { Expense, ExpenseSummary } from '@/api/expenses'
 import { useBaby } from '@/hooks/useBaby'
+import { useCanEdit } from '@/hooks/useCanEdit'
+import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner'
 import { format } from 'date-fns'
 import { parseUTC } from '@/utils/dates'
 
@@ -13,6 +15,7 @@ const CAT_COLORS: Record<string, string> = {
 
 export default function ExpensesPage() {
   const { baby } = useBaby()
+  const canEdit = useCanEdit()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [summary, setSummary] = useState<ExpenseSummary | null>(null)
   const [loading, setLoading] = useState(true)
@@ -67,11 +70,15 @@ export default function ExpensesPage() {
               <Download className="w-4 h-4" />
             </button>
           )}
-          <button onClick={() => setShowForm(f => !f)} className="glass px-3 py-2 flex items-center gap-1.5 rounded-xl text-sm text-slate-300">
-            <Plus className="w-4 h-4" /> Add
-          </button>
+          {canEdit && (
+            <button onClick={() => setShowForm(f => !f)} className="glass px-3 py-2 flex items-center gap-1.5 rounded-xl text-sm text-slate-300">
+              <Plus className="w-4 h-4" /> Add
+            </button>
+          )}
         </div>
       </div>
+
+      {!canEdit && <ReadOnlyBanner />}
 
       {/* Month total */}
       <div className="glass-strong p-4 flex items-center gap-3 slide-up-1">
@@ -126,9 +133,11 @@ export default function ExpensesPage() {
               <p className="text-sm font-semibold text-white">₹{e.amount}</p>
               <p className="text-xs text-slate-500">{format(parseUTC(e.date), 'dd MMM')}</p>
             </div>
-            <button onClick={() => del(e.id)} className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-red-400 transition-all ml-1">
-              <Trash2 className="w-4 h-4" />
-            </button>
+            {canEdit && (
+              <button onClick={() => del(e.id)} className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-red-400 transition-all ml-1">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
           </div>
         ))}
       </div>

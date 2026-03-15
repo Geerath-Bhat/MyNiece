@@ -23,4 +23,4 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
     household: Mapped["Household"] = relationship("Household", back_populates="users")
-    push_subscriptions: Mapped[list["PushSubscription"]] = relationship("PushSubscription", back_populates="user")
+    push_subscriptions: Mapped[list["PushSubscription"]] = relationship("PushSubscription", back_populates="user", cascade="all, delete-orphan")

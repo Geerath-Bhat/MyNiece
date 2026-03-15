@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.dependencies import get_current_user, require_verified
+from app.dependencies import get_current_user, require_verified, get_effective_household_id
 from app.models.sleep_session import SleepSession
 from app.models.baby import Baby
 from app.models.user import User
@@ -11,9 +11,9 @@ from app.schemas.sleep import SleepStartIn, SleepEndIn, SleepSessionOut
 router = APIRouter(prefix="/sleep", tags=["sleep"])
 
 
-def _assert_baby(db: Session, baby_id: str, user: User) -> Baby:
-    baby = db.query(Baby).get(baby_id)
-    if not baby or baby.household_id != user.household_id:
+def _assert_baby(db: Session, baby_id: str, household_id: str) -> Baby:
+    baby = db.query(Baby).filter(Baby.id == baby_id).first()
+    if not baby or baby.household_id != household_id:
         raise HTTPException(404, "Baby not found")
     return baby
 
@@ -21,11 +21,12 @@ def _assert_baby(db: Session, baby_id: str, user: User) -> Baby:
 @router.get("", response_model=dict)
 def list_sleep(
     baby_id: str,
-    limit: int = 20, offset: int = 0,
-    user: User = Depends(get_current_user),
+    limit: int = 20,
+    offset: int = 0,
+    household_id: str = Depends(get_effective_household_id),
     db: Session = Depends(get_db),
 ):
-    _assert_baby(db, baby_id, user)
+    _assert_baby(db, baby_id, household_id)
     q = db.query(SleepSession).filter(SleepSession.baby_id == baby_id)
     total = q.count()
     items = q.order_by(SleepSession.started_at.desc()).offset(offset).limit(limit).all()
@@ -35,10 +36,10 @@ def list_sleep(
 @router.get("/active", response_model=SleepSessionOut | None)
 def active_sleep(
     baby_id: str,
-    user: User = Depends(get_current_user),
+    household_id: str = Depends(get_effective_household_id),
     db: Session = Depends(get_db),
 ):
-    _assert_baby(db, baby_id, user)
+    _assert_baby(db, baby_id, household_id)
     session = (
         db.query(SleepSession)
         .filter(SleepSession.baby_id == baby_id, SleepSession.ended_at.is_(None))
@@ -52,9 +53,10 @@ def active_sleep(
 def start_sleep(
     body: SleepStartIn,
     user: User = Depends(require_verified),
+    household_id: str = Depends(get_effective_household_id),
     db: Session = Depends(get_db),
 ):
-    baby = _assert_baby(db, body.baby_id, user)
+    baby = _assert_baby(db, body.baby_id, household_id)
 
     # Enforce single active session per baby
     active = db.query(SleepSession).filter(
@@ -108,12 +110,13 @@ def end_sleep(
     session_id: str,
     body: SleepEndIn,
     user: User = Depends(require_verified),
+    household_id: str = Depends(get_effective_household_id),
     db: Session = Depends(get_db),
 ):
-    session = db.query(SleepSession).get(session_id)
+    session = db.query(SleepSession).filter(SleepSession.id == session_id).first()
     if not session:
         raise HTTPException(404, "Sleep session not found")
-    baby = _assert_baby(db, session.baby_id, user)
+    baby = _assert_baby(db, session.baby_id, household_id)
 
     if session.ended_at is not None:
         raise HTTPException(400, "Sleep session already ended")
@@ -165,11 +168,12 @@ def end_sleep(
 def delete_sleep(
     session_id: str,
     user: User = Depends(require_verified),
+    household_id: str = Depends(get_effective_household_id),
     db: Session = Depends(get_db),
 ):
-    session = db.query(SleepSession).get(session_id)
+    session = db.query(SleepSession).filter(SleepSession.id == session_id).first()
     if not session:
         raise HTTPException(404)
-    _assert_baby(db, session.baby_id, user)
+    _assert_baby(db, session.baby_id, household_id)
     db.delete(session)
     db.commit()

@@ -2,7 +2,7 @@ from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.dependencies import get_current_user, require_verified
+from app.dependencies import get_current_user, require_verified, get_effective_household_id
 from app.models.activity_log import ActivityLog
 from app.models.baby import Baby
 from app.models.user import User
@@ -12,19 +12,25 @@ from app.services.reminder_service import get_feeding_reminder
 router = APIRouter(prefix="/logs", tags=["logs"])
 
 
-def _assert_baby(db: Session, baby_id: str, user: User) -> Baby:
-    baby = db.query(Baby).get(baby_id)
-    if not baby or baby.household_id != user.household_id:
+def _assert_baby(db: Session, baby_id: str, household_id: str) -> Baby:
+    baby = db.query(Baby).filter(Baby.id == baby_id).first()
+    if not baby or baby.household_id != household_id:
         raise HTTPException(404, "Baby not found")
     return baby
 
 
 @router.get("", response_model=dict)
-def list_logs(baby_id: str, type: str | None = None,
-              from_dt: datetime | None = None, to_dt: datetime | None = None,
-              limit: int = 50, offset: int = 0,
-              user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    _assert_baby(db, baby_id, user)
+def list_logs(
+    baby_id: str,
+    type: str | None = None,
+    from_dt: datetime | None = None,
+    to_dt: datetime | None = None,
+    limit: int = 50,
+    offset: int = 0,
+    household_id: str = Depends(get_effective_household_id),
+    db: Session = Depends(get_db),
+):
+    _assert_baby(db, baby_id, household_id)
     q = db.query(ActivityLog).filter(ActivityLog.baby_id == baby_id)
     if type:
         q = q.filter(ActivityLog.type == type)
@@ -38,8 +44,13 @@ def list_logs(baby_id: str, type: str | None = None,
 
 
 @router.post("", response_model=ActivityLogOut, status_code=201)
-def create_log(body: ActivityLogIn, user: User = Depends(require_verified), db: Session = Depends(get_db)):
-    _assert_baby(db, body.baby_id, user)
+def create_log(
+    body: ActivityLogIn,
+    user: User = Depends(require_verified),
+    household_id: str = Depends(get_effective_household_id),
+    db: Session = Depends(get_db),
+):
+    _assert_baby(db, body.baby_id, household_id)
     ts = body.timestamp or datetime.now(timezone.utc)
     log = ActivityLog(
         baby_id=body.baby_id, logged_by=user.id, type=body.type,
@@ -58,7 +69,7 @@ def create_log(body: ActivityLogIn, user: User = Depends(require_verified), db: 
     # Publish real-time event to SSE subscribers
     from app.services.event_bus import publish
     from app.schemas.log import ActivityLogOut
-    baby = db.query(Baby).get(body.baby_id)
+    baby = db.query(Baby).filter(Baby.id == body.baby_id).first()
     if baby:
         publish(baby.household_id, {
             "type": "activity_log",
@@ -95,8 +106,12 @@ def create_log(body: ActivityLogIn, user: User = Depends(require_verified), db: 
 
 
 @router.get("/last-feed", response_model=LastFeedOut)
-def last_feed(baby_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    _assert_baby(db, baby_id, user)
+def last_feed(
+    baby_id: str,
+    household_id: str = Depends(get_effective_household_id),
+    db: Session = Depends(get_db),
+):
+    _assert_baby(db, baby_id, household_id)
     log = (
         db.query(ActivityLog)
         .filter(ActivityLog.baby_id == baby_id, ActivityLog.type == "feed")
@@ -116,21 +131,29 @@ def last_feed(baby_id: str, user: User = Depends(get_current_user), db: Session 
     return LastFeedOut(timestamp=ts, minutes_since=minutes_since, next_due_at=next_due)
 
 
-
 @router.get("/{log_id}", response_model=ActivityLogOut)
-def get_log(log_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    log = db.query(ActivityLog).get(log_id)
+def get_log(
+    log_id: str,
+    household_id: str = Depends(get_effective_household_id),
+    db: Session = Depends(get_db),
+):
+    log = db.query(ActivityLog).filter(ActivityLog.id == log_id).first()
     if not log:
         raise HTTPException(404)
-    _assert_baby(db, log.baby_id, user)
+    _assert_baby(db, log.baby_id, household_id)
     return log
 
 
 @router.delete("/{log_id}", status_code=204)
-def delete_log(log_id: str, user: User = Depends(require_verified), db: Session = Depends(get_db)):
-    log = db.query(ActivityLog).get(log_id)
+def delete_log(
+    log_id: str,
+    user: User = Depends(require_verified),
+    household_id: str = Depends(get_effective_household_id),
+    db: Session = Depends(get_db),
+):
+    log = db.query(ActivityLog).filter(ActivityLog.id == log_id).first()
     if not log:
         raise HTTPException(404)
-    _assert_baby(db, log.baby_id, user)
+    _assert_baby(db, log.baby_id, household_id)
     db.delete(log)
     db.commit()

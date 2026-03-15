@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
-import { Bell, Milk, Baby, Pill, Dumbbell, Sparkles, Plus, Loader2, X, Pencil } from 'lucide-react'
+import { Bell, Milk, Baby, Pill, Dumbbell, Sparkles, Plus, Loader2, X, Pencil, Trash2 } from 'lucide-react'
 import { remindersApi } from '@/api/reminders'
 import type { Reminder } from '@/api/reminders'
 import { useBaby } from '@/hooks/useBaby'
+import { useCanEdit } from '@/hooks/useCanEdit'
+import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner'
 
 const TYPE_CFG: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
   feeding:           { icon: Milk,     color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
@@ -192,10 +194,12 @@ function ReminderModal({ babyId, existing, onSaved, onClose }: ReminderModalProp
 
 export default function RemindersPage() {
   const { baby } = useBaby()
+  const canEdit = useCanEdit()
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [loading, setLoading] = useState(true)
   const [showAdd, setShowAdd] = useState(false)
   const [editing, setEditing] = useState<Reminder | null>(null)
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null) // reminder id pending delete
 
   useEffect(() => {
     if (!baby) return
@@ -205,6 +209,12 @@ export default function RemindersPage() {
   async function toggle(r: Reminder) {
     const updated = await remindersApi.toggle(r.id, !r.is_enabled)
     setReminders(prev => prev.map(x => x.id === r.id ? updated : x))
+  }
+
+  async function handleDelete(id: string) {
+    await remindersApi.delete(id)
+    setReminders(prev => prev.filter(x => x.id !== id))
+    setConfirmDelete(null)
   }
 
   function handleSaved(r: Reminder) {
@@ -230,17 +240,21 @@ export default function RemindersPage() {
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between slide-up">
           <h1 className="text-xl font-bold text-white">Reminders</h1>
-          <button
-            onClick={() => setShowAdd(true)}
-            className="glass px-3 py-2 flex items-center gap-1.5 rounded-xl text-sm text-slate-300 hover:bg-white/10 transition-colors"
-          >
-            <Plus className="w-4 h-4" /> Add
-          </button>
+          {canEdit && (
+            <button
+              onClick={() => setShowAdd(true)}
+              className="glass px-3 py-2 flex items-center gap-1.5 rounded-xl text-sm text-slate-300 hover:bg-white/10 transition-colors"
+            >
+              <Plus className="w-4 h-4" /> Add
+            </button>
+          )}
         </div>
+
+        {!canEdit && <ReadOnlyBanner />}
 
         <div className="flex flex-col gap-2 slide-up-1">
           {reminders.length === 0 && (
-            <p className="text-center text-slate-600 text-sm py-10">No reminders yet — tap Add to create one.</p>
+            <p className="text-center text-slate-600 text-sm py-10">No reminders yet.</p>
           )}
           {reminders.map(r => {
             const cfg = TYPE_CFG[r.type] ?? TYPE_CFG.custom
@@ -254,17 +268,27 @@ export default function RemindersPage() {
                   <p className="text-sm font-medium text-slate-200">{r.label}</p>
                   <p className="text-xs text-slate-500">{formatDetail(r)}</p>
                 </div>
-                {/* Edit button — visible on hover */}
-                <button
-                  onClick={() => setEditing(r)}
-                  className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-indigo-400 transition-all"
-                  title="Edit reminder"
-                >
-                  <Pencil className="w-4 h-4" />
-                </button>
-                {/* Toggle switch */}
-                <button onClick={() => toggle(r)}
-                  className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${r.is_enabled ? 'bg-indigo-500' : 'bg-slate-700'}`}>
+                {canEdit && (
+                  <>
+                    <button
+                      onClick={() => { setConfirmDelete(null); setEditing(r) }}
+                      className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-violet-400 transition-all"
+                      title="Edit reminder"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(r.id)}
+                      title="Delete reminder"
+                      className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-red-400 transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
+                {/* Toggle switch — read-only for unverified */}
+                <button onClick={() => canEdit && toggle(r)} disabled={!canEdit}
+                  className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${r.is_enabled ? 'bg-indigo-500' : 'bg-slate-700'} ${!canEdit ? 'opacity-50 cursor-not-allowed' : ''}`}>
                   <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${r.is_enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </button>
               </div>
@@ -277,6 +301,46 @@ export default function RemindersPage() {
           <p className="text-xs text-slate-400">Push notifications activate once you allow them in Settings.</p>
         </div>
       </div>
+
+      {/* Delete confirmation modal */}
+      {confirmDelete && (() => {
+        const r = reminders.find(x => x.id === confirmDelete)
+        if (!r) return null
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+            onClick={() => setConfirmDelete(null)}>
+            <div className="w-full max-w-xs rounded-3xl p-6 flex flex-col gap-4"
+              style={{ background: '#120f22', border: '1px solid rgba(248,113,113,0.2)' }}
+              onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-center w-12 h-12 rounded-2xl mx-auto"
+                style={{ background: 'rgba(248,113,113,0.1)' }}>
+                <Trash2 className="w-6 h-6 text-red-400" />
+              </div>
+              <div className="text-center">
+                <p className="text-base font-bold text-white mb-1">Delete reminder?</p>
+                <p className="text-sm text-slate-400">
+                  "<span className="text-slate-200">{r.label}</span>" will be permanently removed.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setConfirmDelete(null)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-300 transition-colors"
+                  style={{ background: 'rgba(255,255,255,0.06)' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDelete(confirmDelete)}
+                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-white bg-red-500 hover:bg-red-600 transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Add modal */}
       {showAdd && baby && (

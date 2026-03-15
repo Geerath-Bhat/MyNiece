@@ -9,6 +9,7 @@ import type { UserOut } from '@/api/auth'
 import { babiesApi } from '@/api/babies'
 import { useNavigate } from 'react-router-dom'
 import { toast } from '@/components/ui/Toast'
+import { useCanEdit } from '@/hooks/useCanEdit'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
@@ -123,6 +124,7 @@ export default function SettingsPage() {
   const { user, logout, setAuth, token } = useAuthStore()
   const { baby, refetch: refetchBaby } = useBaby()
   const { subscribed, subscribe, supported } = usePushSubscription()
+  const canEdit = useCanEdit()
   const navigate = useNavigate()
 
   const [members, setMembers] = useState<UserOut[]>([])
@@ -301,7 +303,7 @@ export default function SettingsPage() {
                 {testingPush ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Send test'}
               </button>
             </div>
-          ) : (
+          ) : canEdit ? (
             <button
               onClick={handleSubscribe}
               disabled={subscribing}
@@ -310,6 +312,8 @@ export default function SettingsPage() {
               {subscribing && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
               Enable Push Notifications
             </button>
+          ) : (
+            <p className="text-xs text-slate-500">Push notifications available after account verification.</p>
           )}
 
           {/* ── Telegram ── */}

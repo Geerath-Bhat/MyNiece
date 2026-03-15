@@ -60,16 +60,23 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
     if get_user_by_email(db, body.email):
         raise HTTPException(status_code=400, detail="Email already registered")
 
+    is_super_admin = (
+        settings.super_admin_email
+        and body.email.lower() == settings.super_admin_email.lower()
+    )
+
     if body.invite_code:
-        household = db.query(Household).filter(Household.invite_code == body.invite_code).first()
+        household = db.query(Household).filter(
+            Household.invite_code == body.invite_code.strip().lower()
+        ).first()
         if not household:
             raise HTTPException(status_code=404, detail="Invalid invite code")
-        role = "member"
+        role = "super_admin" if is_super_admin else "member"
     elif body.household_name:
         household = Household(name=body.household_name)
         db.add(household)
         db.flush()
-        role = "admin"
+        role = "super_admin" if is_super_admin else "admin"
     else:
         raise HTTPException(status_code=400, detail="Provide household_name (create) or invite_code (join)")
 
@@ -90,7 +97,7 @@ def register(body: RegisterRequest, db: Session = Depends(get_db)):
         from app.services.telegram_service import send_telegram_message
         admins = db.query(User).filter(
             User.household_id == household.id,
-            User.role == "admin",
+            User.role.in_(["admin", "super_admin"]),
         ).all()
         msg = (
             f"👶 <b>New user joined CryBaby!</b>\n"
@@ -167,7 +174,7 @@ def verify_otp(body: VerifyOTPRequest, db: Session = Depends(get_db)):
     otp.used = True
     db.commit()
 
-    user = db.query(User).get(body.user_id)
+    user = db.query(User).filter(User.id == body.user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -181,7 +188,7 @@ def resend_otp(body: VerifyOTPRequest, background_tasks: BackgroundTasks, db: Se
     if not settings.otp_enabled:
         raise HTTPException(status_code=400, detail="OTP not enabled")
 
-    user = db.query(User).get(body.user_id)
+    user = db.query(User).filter(User.id == body.user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
@@ -232,7 +239,7 @@ def household_members(current_user: User = Depends(get_current_user), db: Sessio
 
 @router.delete("/household/members/{user_id}", status_code=204)
 def remove_member(user_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    if current_user.role != "admin":
+    if current_user.role not in ("admin", "super_admin"):
         raise HTTPException(status_code=403, detail="Admin only")
     if user_id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot remove yourself")

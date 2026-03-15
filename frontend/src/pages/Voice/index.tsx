@@ -4,6 +4,8 @@ import { useVoice } from '@/hooks/useVoice'
 import { voiceApi } from '@/api/voice'
 import type { VoiceResult } from '@/api/voice'
 import { useBaby } from '@/hooks/useBaby'
+import { useCanEdit } from '@/hooks/useCanEdit'
+import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner'
 
 const EXAMPLES = [
   '"I fed the baby at 3 PM"',
@@ -25,6 +27,7 @@ function speak(text: string) {
 
 export default function VoicePage() {
   const { baby } = useBaby()
+  const canEdit = useCanEdit()
   const [processing, setProcessing] = useState(false)
   const [result, setResult] = useState<VoiceResult | null>(null)
   const [ttsEnabled, setTtsEnabled] = useState(true)
@@ -69,6 +72,8 @@ export default function VoicePage() {
         </button>
       </div>
 
+      {!canEdit && <ReadOnlyBanner />}
+
       {/* Mic button */}
       <div className="slide-up-1 relative flex items-center justify-center mt-4">
         {listening && (
@@ -77,7 +82,7 @@ export default function VoicePage() {
             <span className="absolute w-32 h-32 rounded-full bg-indigo-500/15 animate-ping" style={{ animationDelay: '0.3s' }} />
           </>
         )}
-        <button onClick={handleMic} disabled={!supported || processing}
+        <button onClick={handleMic} disabled={!supported || processing || !canEdit}
           className={`relative w-24 h-24 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 btn-glow disabled:opacity-50
             ${listening ? 'bg-gradient-to-br from-red-500 to-pink-600 shadow-red-500/40 scale-110'
               : 'bg-gradient-to-br from-indigo-500 to-violet-600 shadow-indigo-500/40'}`}>
@@ -89,7 +94,8 @@ export default function VoicePage() {
       </div>
 
       <p className="text-sm text-slate-400 slide-up-2">
-        {!supported ? 'Voice not supported in this browser'
+        {!canEdit ? 'Verification required to use voice commands'
+          : !supported ? 'Voice not supported in this browser'
           : processing ? 'Processing...'
           : listening ? 'Listening… tap to stop'
           : 'Tap to speak'}

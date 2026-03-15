@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useNavigate } from 'react-router-dom'
+import { HouseholdSwitcher } from './HouseholdSwitcher'
 
 const links = [
   { to: '/',          icon: LayoutDashboard, label: 'Dashboard',  end: true,  adminOnly: false },
@@ -21,7 +22,7 @@ const links = [
 export function SideNav() {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
-  const isAdmin = user?.role === 'admin'
+  const isAdmin = user?.role === 'admin' || user?.role === 'super_admin'
 
   const handleLogout = () => { logout(); navigate('/login', { replace: true }) }
 
@@ -43,6 +44,9 @@ export function SideNav() {
         </div>
         <span className="hidden lg:block text-white font-semibold text-sm tracking-wide">CryBaby</span>
       </div>
+
+      {/* Household switcher — super_admin only */}
+      {user?.role === 'super_admin' && <HouseholdSwitcher />}
 
       {/* Nav links */}
       <nav className="flex flex-col gap-1 flex-1 px-2 lg:px-3 overflow-y-auto">

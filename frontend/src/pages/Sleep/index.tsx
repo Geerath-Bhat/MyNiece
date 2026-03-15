@@ -3,6 +3,8 @@ import { Moon, Sun, Loader2, Trash2 } from 'lucide-react'
 import { sleepApi } from '@/api/sleep'
 import type { SleepSession } from '@/api/sleep'
 import { useBaby } from '@/hooks/useBaby'
+import { useCanEdit } from '@/hooks/useCanEdit'
+import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner'
 import { formatDistanceToNow, format } from 'date-fns'
 import { parseUTC } from '@/utils/dates'
 
@@ -35,6 +37,7 @@ function ElapsedTimer({ startedAt }: { startedAt: string }) {
 
 export default function SleepPage() {
   const { baby } = useBaby()
+  const canEdit = useCanEdit()
   const [active, setActive] = useState<SleepSession | null>(null)
   const [sessions, setSessions] = useState<SleepSession[]>([])
   const [loading, setLoading] = useState(true)
@@ -84,6 +87,8 @@ export default function SleepPage() {
     <div className="flex flex-col gap-4">
       <h1 className="text-xl font-bold text-white slide-up">Sleep Tracker</h1>
 
+      {!canEdit && <ReadOnlyBanner />}
+
       {/* Active session card */}
       <div className={`glass-strong p-5 flex flex-col items-center gap-3 slide-up-1 ${active ? 'border-indigo-500/30' : ''}`}>
         <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${active ? 'bg-indigo-500/20' : 'bg-slate-700/40'}`}>
@@ -94,24 +99,26 @@ export default function SleepPage() {
           <>
             <p className="text-xs text-slate-400">Baby is sleeping · started {formatDistanceToNow(parseUTC(active.started_at), { addSuffix: true })}</p>
             <ElapsedTimer startedAt={active.started_at} />
-            <button
-              onClick={handleEnd} disabled={acting}
-              className="btn-glow w-full py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {acting && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-              <Sun className="w-4 h-4" /> End Sleep
-            </button>
+            {canEdit && (
+              <button onClick={handleEnd} disabled={acting}
+                className="btn-glow w-full py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {acting && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                <Sun className="w-4 h-4" /> End Sleep
+              </button>
+            )}
           </>
         ) : (
           <>
             <p className="text-sm text-slate-400">No active sleep session</p>
-            <button
-              onClick={handleStart} disabled={acting}
-              className="btn-glow w-full py-3 rounded-xl bg-gradient-to-r from-slate-700 to-slate-600 border border-white/10 text-slate-200 font-semibold flex items-center justify-center gap-2 disabled:opacity-50 hover:border-indigo-500/40 transition-all"
-            >
-              {acting && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-              <Moon className="w-4 h-4" /> Start Sleep
-            </button>
+            {canEdit && (
+              <button onClick={handleStart} disabled={acting}
+                className="btn-glow w-full py-3 rounded-xl bg-gradient-to-r from-slate-700 to-slate-600 border border-white/10 text-slate-200 font-semibold flex items-center justify-center gap-2 disabled:opacity-50 hover:border-indigo-500/40 transition-all"
+              >
+                {acting && <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                <Moon className="w-4 h-4" /> Start Sleep
+              </button>
+            )}
           </>
         )}
       </div>
@@ -137,9 +144,11 @@ export default function SleepPage() {
                 {s.quality}
               </span>
             )}
-            <button onClick={() => handleDelete(s.id)} className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-red-400 transition-all ml-1">
-              <Trash2 className="w-4 h-4" />
-            </button>
+            {canEdit && (
+              <button onClick={() => handleDelete(s.id)} className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-red-400 transition-all ml-1">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            )}
           </div>
         ))}
       </div>

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { parseUTC } from '@/utils/dates'
 import { useAuthStore } from '@/store/authStore'
 import { useBaby } from '@/hooks/useBaby'
+import { useCanEdit } from '@/hooks/useCanEdit'
 import { useNextFeed } from '@/hooks/useNextFeed'
 import { useActivityFeed } from '@/hooks/useActivityFeed'
 import { logsApi } from '@/api/logs'
@@ -72,6 +73,7 @@ export default function DashboardPage() {
   const navigate = useNavigate()
   const user = useAuthStore(s => s.user)
   const { baby, babies, loading: babyLoading, noBaby } = useBaby()
+  const canEdit = useCanEdit()
   const { lastFedAt, nextDueAt, optimisticFeed, refresh: refreshFeed } = useNextFeed(baby?.id ?? null)
   const [activity, setActivity] = useState<ActivityItem[]>([])
   const [feedCount, setFeedCount] = useState(0)
@@ -244,23 +246,27 @@ export default function DashboardPage() {
       />
 
       {/* ── Quick Log Grid ──────────────────────────────────────── */}
-      <QuickActions
-        onFeed={logFeed}
-        onDiaper={logDiaper}
-        onVitaminD={() => baby && logsApi.create({ baby_id: baby.id, type: 'custom', custom_label: 'Vitamin D' })}
-        onExercise={() => baby && logsApi.create({ baby_id: baby.id, type: 'custom', custom_label: 'Pre-feed exercise' })}
-        onSleep={() => navigate('/sleep')}
-        onWeight={() => setShowWeightLog(true)}
-      />
+      {canEdit && (
+        <>
+          <QuickActions
+            onFeed={logFeed}
+            onDiaper={logDiaper}
+            onVitaminD={() => baby && logsApi.create({ baby_id: baby.id, type: 'custom', custom_label: 'Vitamin D' })}
+            onExercise={() => baby && logsApi.create({ baby_id: baby.id, type: 'custom', custom_label: 'Pre-feed exercise' })}
+            onSleep={() => navigate('/sleep')}
+            onWeight={() => setShowWeightLog(true)}
+          />
 
-      {/* Log past event link */}
-      <button
-        onClick={() => setShowPastLog(true)}
-        className="flex items-center justify-center gap-1.5 py-2 text-xs text-violet-400 hover:text-violet-300 transition-colors"
-      >
-        <span>+ Log a past event</span>
-        <ChevronRight className="w-3 h-3" />
-      </button>
+          {/* Log past event link */}
+          <button
+            onClick={() => setShowPastLog(true)}
+            className="flex items-center justify-center gap-1.5 py-2 text-xs text-violet-400 hover:text-violet-300 transition-colors"
+          >
+            <span>+ Log a past event</span>
+            <ChevronRight className="w-3 h-3" />
+          </button>
+        </>
+      )}
 
       {/* ── Recent Activity ─────────────────────────────────────── */}
       <RecentActivity items={activity} />

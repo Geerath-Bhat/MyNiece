@@ -5,12 +5,18 @@ export interface UserOut {
   email: string
   display_name: string
   timezone: string
-  role: string           // 'admin' | 'verified' | 'member'
+  role: string           // 'super_admin' | 'admin' | 'verified' | 'member'
   household_id: string
   is_verified: boolean
   avatar_url: string | null
   theme: string
   telegram_chat_id: string | null
+}
+
+export interface HouseholdOut {
+  id: string
+  name: string
+  invite_code: string
 }
 
 export interface AdminStats {
@@ -81,4 +87,5 @@ export const adminApi = {
   unverify: (userId: string) => api.patch<UserOut>(`/admin/users/${userId}/unverify`).then(r => r.data),
   deleteUser: (userId: string) => api.delete(`/admin/users/${userId}`),
   stats: () => api.get<AdminStats>('/admin/stats').then(r => r.data),
+  households: () => api.get<HouseholdOut[]>('/admin/households').then(r => r.data),
 }

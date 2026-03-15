@@ -7,10 +7,21 @@ export const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-// Attach token from localStorage on every request
+// Attach token + optional as_household param on every request.
+// as_household is read directly from the persisted Zustand store in localStorage
+// so it survives page reloads without any extra init step.
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('crybaby_token')
   if (token) config.headers.Authorization = `Bearer ${token}`
+
+  try {
+    const raw = localStorage.getItem('crybaby-household')
+    if (raw) {
+      const id = JSON.parse(raw)?.state?.selectedHousehold?.id
+      if (id) config.params = { ...(config.params ?? {}), as_household: id }
+    }
+  } catch { /* ignore parse errors */ }
+
   return config
 })
 
@@ -25,7 +36,6 @@ api.interceptors.response.use(
       localStorage.removeItem('crybaby_token')
       window.location.href = '/login'
     }
-    // Attach the server detail message so callers can show it
     if (err.response?.data?.detail) {
       err.userMessage = err.response.data.detail
     }

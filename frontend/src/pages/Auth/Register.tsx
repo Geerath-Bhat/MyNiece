@@ -28,7 +28,7 @@ export default function Register() {
       const payload = {
         email: form.email, password: form.password,
         display_name: form.display_name, timezone: form.timezone,
-        ...(mode === 'create' ? { household_name: form.household_name } : { invite_code: form.invite_code }),
+        ...(mode === 'create' ? { household_name: form.household_name } : { invite_code: form.invite_code.trim().toLowerCase() }),
       }
       const data = await authApi.register(payload)
       setAuth(data.access_token, data.user)

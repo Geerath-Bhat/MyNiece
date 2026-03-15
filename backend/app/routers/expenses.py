@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.dependencies import get_current_user, require_verified
+from app.dependencies import get_current_user, require_verified, get_effective_household_id
 from app.models.expense import Expense
 from app.models.baby import Baby
 from app.models.user import User
@@ -16,18 +16,23 @@ router = APIRouter(prefix="/expenses", tags=["expenses"])
 CATEGORIES = ("diapers", "medicine", "products", "doctor", "other")
 
 
-def _assert_baby(db: Session, baby_id: str, user: User) -> Baby:
-    baby = db.query(Baby).get(baby_id)
-    if not baby or baby.household_id != user.household_id:
+def _assert_baby(db: Session, baby_id: str, household_id: str) -> Baby:
+    baby = db.query(Baby).filter(Baby.id == baby_id).first()
+    if not baby or baby.household_id != household_id:
         raise HTTPException(404, "Baby not found")
     return baby
 
 
 @router.get("", response_model=dict)
-def list_expenses(baby_id: str, month: str | None = None, category: str | None = None,
-                  limit: int = 50,
-                  user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    _assert_baby(db, baby_id, user)
+def list_expenses(
+    baby_id: str,
+    month: str | None = None,
+    category: str | None = None,
+    limit: int = 50,
+    household_id: str = Depends(get_effective_household_id),
+    db: Session = Depends(get_db),
+):
+    _assert_baby(db, baby_id, household_id)
     q = db.query(Expense).filter(Expense.baby_id == baby_id)
     if month:  # YYYY-MM
         y, m = month.split("-")
@@ -43,8 +48,13 @@ def list_expenses(baby_id: str, month: str | None = None, category: str | None =
 
 
 @router.post("", response_model=ExpenseOut, status_code=201)
-def create_expense(body: ExpenseIn, user: User = Depends(require_verified), db: Session = Depends(get_db)):
-    _assert_baby(db, body.baby_id, user)
+def create_expense(
+    body: ExpenseIn,
+    user: User = Depends(require_verified),
+    household_id: str = Depends(get_effective_household_id),
+    db: Session = Depends(get_db),
+):
+    _assert_baby(db, body.baby_id, household_id)
     e = Expense(user_id=user.id, **body.model_dump())
     db.add(e)
     db.commit()
@@ -53,12 +63,17 @@ def create_expense(body: ExpenseIn, user: User = Depends(require_verified), db: 
 
 
 @router.patch("/{expense_id}", response_model=ExpenseOut)
-def patch_expense(expense_id: str, body: ExpensePatch,
-                  user: User = Depends(require_verified), db: Session = Depends(get_db)):
-    e = db.query(Expense).get(expense_id)
+def patch_expense(
+    expense_id: str,
+    body: ExpensePatch,
+    user: User = Depends(require_verified),
+    household_id: str = Depends(get_effective_household_id),
+    db: Session = Depends(get_db),
+):
+    e = db.query(Expense).filter(Expense.id == expense_id).first()
     if not e:
         raise HTTPException(404)
-    _assert_baby(db, e.baby_id, user)
+    _assert_baby(db, e.baby_id, household_id)
     for k, v in body.model_dump(exclude_none=True).items():
         setattr(e, k, v)
     db.commit()
@@ -67,19 +82,28 @@ def patch_expense(expense_id: str, body: ExpensePatch,
 
 
 @router.delete("/{expense_id}", status_code=204)
-def delete_expense(expense_id: str, user: User = Depends(require_verified), db: Session = Depends(get_db)):
-    e = db.query(Expense).get(expense_id)
+def delete_expense(
+    expense_id: str,
+    user: User = Depends(require_verified),
+    household_id: str = Depends(get_effective_household_id),
+    db: Session = Depends(get_db),
+):
+    e = db.query(Expense).filter(Expense.id == expense_id).first()
     if not e:
         raise HTTPException(404)
-    _assert_baby(db, e.baby_id, user)
+    _assert_baby(db, e.baby_id, household_id)
     db.delete(e)
     db.commit()
 
 
 @router.get("/summary", response_model=ExpenseSummaryOut)
-def expense_summary(baby_id: str, month: str | None = None,
-                    user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    _assert_baby(db, baby_id, user)
+def expense_summary(
+    baby_id: str,
+    month: str | None = None,
+    household_id: str = Depends(get_effective_household_id),
+    db: Session = Depends(get_db),
+):
+    _assert_baby(db, baby_id, household_id)
     q = db.query(Expense).filter(Expense.baby_id == baby_id)
     if month:
         y, m = month.split("-")
@@ -95,9 +119,14 @@ def expense_summary(baby_id: str, month: str | None = None,
 
 
 @router.get("/export")
-def export_expenses(baby_id: str, from_date: date | None = None, to_date: date | None = None,
-                    user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    _assert_baby(db, baby_id, user)
+def export_expenses(
+    baby_id: str,
+    from_date: date | None = None,
+    to_date: date | None = None,
+    household_id: str = Depends(get_effective_household_id),
+    db: Session = Depends(get_db),
+):
+    _assert_baby(db, baby_id, household_id)
     q = db.query(Expense).filter(Expense.baby_id == baby_id)
     if from_date:
         q = q.filter(Expense.date >= from_date)

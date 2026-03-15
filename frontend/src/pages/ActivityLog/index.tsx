@@ -5,9 +5,11 @@ import { parseUTC } from '@/utils/dates'
 import { logsApi } from '@/api/logs'
 import type { ActivityLog } from '@/api/logs'
 import { useBaby } from '@/hooks/useBaby'
+import { useCanEdit } from '@/hooks/useCanEdit'
 import { useActivityFeed } from '@/hooks/useActivityFeed'
 import type { FeedEvent } from '@/hooks/useActivityFeed'
 import { LiveDot } from '@/components/ui/LiveDot'
+import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner'
 
 const cfg = {
   feed:   { icon: Milk,     color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
@@ -63,6 +65,7 @@ function DeleteConfirmModal({ log, onConfirm, onCancel }: {
 
 export default function ActivityLogPage() {
   const { baby } = useBaby()
+  const canEdit = useCanEdit()
   const [logs, setLogs] = useState<ActivityLog[]>([])
   const [filter, setFilter] = useState('all')
   const [loading, setLoading] = useState(true)
@@ -116,6 +119,8 @@ export default function ActivityLogPage() {
           </button>
         </div>
 
+        {!canEdit && <ReadOnlyBanner />}
+
         {showFilter && (
           <div className="flex gap-2 slide-up">
             {TYPES.map(t => (
@@ -150,12 +155,14 @@ export default function ActivityLogPage() {
                   <span className="text-xs text-slate-500 shrink-0">
                     {formatDistanceToNow(parseUTC(log.timestamp), { addSuffix: true })}
                   </span>
-                  <button
-                    onClick={() => setPendingDelete(log)}
-                    className="opacity-0 group-hover:opacity-100 ml-1 text-slate-600 hover:text-red-400 transition-all"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {canEdit && (
+                    <button
+                      onClick={() => setPendingDelete(log)}
+                      className="opacity-0 group-hover:opacity-100 ml-1 text-slate-600 hover:text-red-400 transition-all"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               )
             })}
