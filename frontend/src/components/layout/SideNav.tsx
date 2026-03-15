@@ -60,7 +60,7 @@ export function SideNav() {
               'text-sm font-medium',
               isActive
                 ? adminOnly ? 'bg-amber-500/15 text-amber-400' : 'bg-indigo-500/15 text-indigo-400'
-                : adminOnly ? 'text-amber-600 hover:text-amber-400 hover:bg-amber-500/10' : 'text-slate-500 hover:text-slate-200 hover:bg-white/5',
+                : adminOnly ? 'text-amber-600 hover:text-amber-400 hover:bg-amber-500/10' : 'text-slate-400 hover:text-slate-200 hover:bg-white/5',
             ].join(' ')}
           >
             {({ isActive }) => (
@@ -92,7 +92,7 @@ export function SideNav() {
         </div>
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
+          className="flex items-center gap-3 px-2.5 py-2.5 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
         >
           <LogOut className="w-5 h-5 shrink-0" />
           <span className="hidden lg:block text-sm font-medium">Sign out</span>

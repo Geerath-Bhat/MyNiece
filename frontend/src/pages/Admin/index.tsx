@@ -11,20 +11,34 @@ function RoleBadge({ role }: { role: string }) {
     super_admin: { label: 'super admin', cls: 'bg-fuchsia-500/15 text-fuchsia-400' },
     admin:       { label: 'admin',       cls: 'bg-amber-500/15 text-amber-400'    },
     verified:    { label: 'verified',    cls: 'bg-blue-500/15 text-blue-400'      },
-    member:      { label: 'member',      cls: 'bg-slate-700 text-slate-400'       },
+    member:      { label: 'member',      cls: 'bg-slate-500/15 text-slate-400'    },
   }
   const { label, cls } = cfg[role] ?? cfg.member
   return <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${cls}`}>{label}</span>
 }
 
+const COLOR_HEX: Record<string, string> = {
+  'text-indigo-400': '#818cf8',
+  'text-blue-400':   '#60a5fa',
+  'text-cyan-400':   '#22d3ee',
+  'text-emerald-400':'#34d399',
+}
+
 function StatCard({ label, value, icon: Icon, color }: { label: string; value: number; icon: React.ElementType; color: string }) {
+  const hex = COLOR_HEX[color] ?? '#818cf8'
+  const iconBg = color.replace('text-', 'bg-').replace('400', '400/15')
   return (
-    <div className="glass p-4 flex flex-col gap-1">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-400">{label}</p>
-        <Icon className={`w-4 h-4 ${color}`} />
+    <div className="relative overflow-hidden rounded-2xl p-4 flex flex-col gap-1"
+      style={{ background: `linear-gradient(135deg, ${hex}18 0%, ${hex}06 100%)`, border: `1px solid ${hex}40` }}>
+      <div className="absolute top-0 left-0 right-0 h-[3px]"
+        style={{ background: `linear-gradient(90deg, ${hex}, ${hex}66)`, opacity: 0.9 }} />
+      <div className="flex items-center justify-between mt-1">
+        <p className="text-xs text-slate-500 font-medium">{label}</p>
+        <div className={`w-7 h-7 rounded-xl flex items-center justify-center ${iconBg}`}>
+          <Icon className={`w-3.5 h-3.5 ${color}`} />
+        </div>
       </div>
-      <p className="text-2xl font-bold text-white">{value}</p>
+      <p className="text-2xl font-bold leading-tight" style={{ color: hex }}>{value}</p>
     </div>
   )
 }
@@ -127,7 +141,7 @@ export default function AdminPage() {
               onClick={() => handleVerify(u)}
               disabled={acting === u.id}
               title={u.is_verified ? 'Revoke verification' : 'Verify user'}
-              className={`p-1.5 rounded-lg transition-all ${u.is_verified ? 'text-blue-400 hover:bg-blue-500/10' : 'text-slate-600 hover:text-blue-400 hover:bg-blue-500/10'}`}
+              className={`p-1.5 rounded-lg transition-all ${u.is_verified ? 'text-blue-400 hover:bg-blue-500/10' : 'text-slate-400 hover:text-blue-400 hover:bg-blue-500/10'}`}
             >
               {acting === u.id
                 ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -139,7 +153,7 @@ export default function AdminPage() {
               onClick={() => handlePromote(u)}
               disabled={acting === u.id}
               title={u.role === 'admin' ? 'Demote to member' : 'Promote to admin'}
-              className={`p-1.5 rounded-lg transition-all ${u.role === 'admin' ? 'text-amber-400 hover:bg-amber-500/10' : 'text-slate-600 hover:text-amber-400 hover:bg-amber-500/10'}`}
+              className={`p-1.5 rounded-lg transition-all ${u.role === 'admin' ? 'text-amber-400 hover:bg-amber-500/10' : 'text-slate-400 hover:text-amber-400 hover:bg-amber-500/10'}`}
             >
               {acting === u.id
                 ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -152,7 +166,7 @@ export default function AdminPage() {
             onClick={() => setConfirmDelete(u)}
             disabled={acting === u.id}
             title="Delete user"
-            className="p-1.5 rounded-lg text-slate-600 hover:text-red-400 hover:bg-red-500/10 transition-all"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
@@ -206,13 +220,13 @@ export default function AdminPage() {
               const hUsers = users.filter(u => u.household_id === hh.id)
               if (hUsers.length === 0) return null
               return (
-                <div key={hh.id} className="glass-strong p-4 flex flex-col gap-1 slide-up-2">
+                <div key={hh.id} className="glass-hero p-4 flex flex-col gap-1 slide-up-2">
                   <div className="flex items-center gap-2 mb-2">
-                    <div className="w-5 h-5 rounded-md bg-fuchsia-500/20 flex items-center justify-center shrink-0">
-                      <span className="text-[10px] text-fuchsia-300 font-bold">{hh.name.charAt(0).toUpperCase()}</span>
+                    <div className="w-7 h-7 rounded-xl bg-fuchsia-500/15 flex items-center justify-center shrink-0">
+                      <span className="text-xs text-fuchsia-400 font-bold">{hh.name.charAt(0).toUpperCase()}</span>
                     </div>
                     <p className="text-sm font-semibold text-slate-200">{hh.name}</p>
-                    <span className="text-xs text-slate-600 ml-auto">{hUsers.length} member{hUsers.length !== 1 ? 's' : ''}</span>
+                    <span className="text-xs text-slate-500 ml-auto">{hUsers.length} member{hUsers.length !== 1 ? 's' : ''}</span>
                   </div>
                   {hUsers.map(renderUserRow)}
                 </div>
@@ -221,13 +235,13 @@ export default function AdminPage() {
           </>
         ) : (
           // Flat list for household admin
-          <div className="glass-strong p-4 flex flex-col gap-1 slide-up-2">
+          <div className="glass-hero p-4 flex flex-col gap-1 slide-up-2">
             <p className="text-sm font-semibold text-slate-200 mb-2">Your Household Members</p>
             {users.map(renderUserRow)}
           </div>
         )}
 
-        <p className="text-center text-xs text-slate-700 pb-2">
+        <p className="text-center text-xs text-slate-500 pb-2">
           {isSuperAdmin ? 'Super Admin' : 'Household Admin'} · {user?.email}
         </p>
       </div>

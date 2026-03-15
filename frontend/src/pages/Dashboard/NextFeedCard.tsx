@@ -46,7 +46,7 @@ export function NextFeedCard({ lastFedAt, intervalMinutes = 150, onLogFeed }: Pr
   const textColor = overdue ? 'text-rose-400' : progress > 0.8 ? 'text-fuchsia-400' : 'text-violet-300'
 
   return (
-    <div className="glass-strong p-5 slide-up-1">
+    <div className="glass-hero p-5 slide-up-1">
       <div className="flex items-center justify-between mb-4">
         <div>
           <p className="text-xs text-slate-400 uppercase tracking-widest font-medium">Next Feeding</p>
@@ -58,16 +58,16 @@ export function NextFeedCard({ lastFedAt, intervalMinutes = 150, onLogFeed }: Pr
             <p className="text-sm text-slate-500 mt-0.5">Log first feed to start countdown</p>
           )}
         </div>
-        <div className="w-9 h-9 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(168,85,247,0.15)' }}>
+        <div className="w-9 h-9 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.15)' }}>
           <Milk className="w-4 h-4 text-violet-400" />
         </div>
       </div>
 
       <div className="flex items-center gap-6 py-2">
         {/* Circular progress */}
-        <div className="relative w-28 h-28 flex items-center justify-center shrink-0">
+        <div className="relative w-28 h-28 flex items-center justify-center shrink-0 rounded-full" style={{ background: 'rgba(124,58,237,0.06)' }}>
           <svg className="absolute w-full h-full -rotate-90" viewBox="0 0 120 120">
-            <circle cx="60" cy="60" r="52" fill="none" stroke="rgba(167,139,250,0.1)" strokeWidth="6" />
+            <circle cx="60" cy="60" r="52" fill="none" className="ring-track" strokeWidth="6" />
             <circle
               cx="60" cy="60" r="52" fill="none"
               strokeWidth="6" strokeLinecap="round"

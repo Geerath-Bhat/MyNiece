@@ -83,9 +83,12 @@ export default function VoicePage() {
           </>
         )}
         <button onClick={handleMic} disabled={!supported || processing || !canEdit}
-          className={`relative w-24 h-24 rounded-full flex items-center justify-center shadow-2xl transition-all duration-300 btn-glow disabled:opacity-50
-            ${listening ? 'bg-gradient-to-br from-red-500 to-pink-600 shadow-red-500/40 scale-110'
-              : 'bg-gradient-to-br from-indigo-500 to-violet-600 shadow-indigo-500/40'}`}>
+          className={`relative w-24 h-24 rounded-full flex items-center justify-center transition-all duration-300 btn-glow disabled:opacity-50
+            ${listening ? 'bg-gradient-to-br from-red-500 to-pink-600 scale-110'
+              : 'bg-gradient-to-br from-violet-500 via-indigo-500 to-purple-700'}`}
+          style={listening
+            ? { boxShadow: '0 0 0 0 transparent' }
+            : { boxShadow: '0 8px 32px rgba(124,58,237,0.45), 0 2px 8px rgba(124,58,237,0.30)' }}>
           {processing
             ? <span className="w-10 h-10 border-3 border-white/30 border-t-white rounded-full animate-spin" />
             : listening ? <MicOff className="w-10 h-10 text-white" />
@@ -132,14 +135,14 @@ export default function VoicePage() {
       )}
 
       {/* Example commands */}
-      <div className="glass w-full p-4 text-left slide-up-3">
+      <div className="glass-hero w-full p-4 text-left slide-up-3">
         <div className="flex items-center gap-2 mb-3">
           <Sparkles className="w-4 h-4 text-violet-400" />
           <p className="text-xs font-semibold text-slate-300 uppercase tracking-wider">Try saying</p>
         </div>
         <ul className="flex flex-col gap-2">
           {EXAMPLES.map(ex => (
-            <li key={ex} className="text-sm text-slate-400 py-1 border-b border-white/5 last:border-0">{ex}</li>
+            <li key={ex} className="text-sm text-slate-400 py-1.5 border-b border-white/10 last:border-0">{ex}</li>
           ))}
         </ul>
       </div>

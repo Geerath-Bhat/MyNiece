@@ -12,9 +12,9 @@ import { LiveDot } from '@/components/ui/LiveDot'
 import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner'
 
 const cfg = {
-  feed:   { icon: Milk,     color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
-  diaper: { icon: Baby,     color: 'text-cyan-400',   bg: 'bg-cyan-500/10'   },
-  custom: { icon: Sparkles, color: 'text-violet-400', bg: 'bg-violet-500/10' },
+  feed:   { icon: Milk,     color: 'text-violet-400',  bg: 'bg-violet-500/10',  accent: 'rgba(124,58,237,0.35)'  },
+  diaper: { icon: Baby,     color: 'text-cyan-400',    bg: 'bg-cyan-500/10',    accent: 'rgba(6,182,212,0.35)'   },
+  custom: { icon: Sparkles, color: 'text-fuchsia-400', bg: 'bg-fuchsia-500/10', accent: 'rgba(217,70,239,0.35)'  },
 }
 
 const TYPES = ['all', 'feed', 'diaper', 'custom']
@@ -144,7 +144,8 @@ export default function ActivityLogPage() {
               const c = cfg[log.type as keyof typeof cfg] ?? cfg.custom
               const Icon = c.icon
               return (
-                <div key={log.id} className="glass flex items-center gap-3 px-4 py-3.5 group">
+                <div key={log.id} className="glass flex items-center gap-3 px-4 py-3.5 group"
+                  style={{ borderLeft: `3px solid ${c.accent}` }}>
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${c.bg}`}>
                     <Icon className={`w-5 h-5 ${c.color}`} />
                   </div>
@@ -158,7 +159,7 @@ export default function ActivityLogPage() {
                   {canEdit && (
                     <button
                       onClick={() => setPendingDelete(log)}
-                      className="opacity-0 group-hover:opacity-100 ml-1 text-slate-600 hover:text-red-400 transition-all"
+                      className="opacity-0 group-hover:opacity-100 ml-1 text-slate-400 hover:text-red-400 transition-all"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Bell, X, ChevronRight } from 'lucide-react'
+import { Bell, ChevronRight } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { parseUTC } from '@/utils/dates'
 import { useAuthStore } from '@/store/authStore'
@@ -81,7 +81,6 @@ export default function DashboardPage() {
   const [setupDone, setSetupDone] = useState(false)
   const [showPastLog, setShowPastLog] = useState(false)
   const [showWeightLog, setShowWeightLog] = useState(false)
-  const [showBell, setShowBell] = useState(false)
 
   const loadLogs = useCallback(() => {
     if (!baby) return
@@ -150,8 +149,8 @@ export default function DashboardPage() {
     <div className="flex flex-col gap-4 pb-2">
 
       {/* ── Hero Banner ─────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-3xl slide-up"
-        style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.25) 0%, rgba(168,85,247,0.12) 60%, rgba(236,72,153,0.10) 100%)', border: '1px solid rgba(167,139,250,0.15)' }}>
+      <div className="relative rounded-3xl slide-up"
+        style={{ background: 'linear-gradient(135deg, rgba(124,58,237,0.25) 0%, rgba(168,85,247,0.12) 60%, rgba(236,72,153,0.10) 100%)', border: '1px solid rgba(167,139,250,0.25)', boxShadow: '0 8px 40px rgba(124,58,237,0.12), 0 2px 8px rgba(124,58,237,0.07)' }}>
 
         {/* Decorative orb */}
         <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-20"
@@ -164,43 +163,17 @@ export default function DashboardPage() {
               <p className="text-slate-400 text-xs font-medium">{getGreeting()},</p>
               <h1 className="text-2xl font-bold gradient-text leading-tight">{firstName}</h1>
             </div>
-            {/* Bell */}
-            <div className="relative">
-              <button
-                onClick={() => setShowBell(v => !v)}
-                className="w-10 h-10 flex items-center justify-center rounded-2xl relative"
-                style={{ background: 'rgba(167,139,250,0.1)', border: '1px solid rgba(167,139,250,0.2)' }}
-              >
-                <Bell className="w-5 h-5 text-violet-300" />
-                {activity.length > 0 && (
-                  <span className="absolute top-2 right-2 w-2 h-2 bg-fuchsia-400 rounded-full" />
-                )}
-              </button>
-              {showBell && (
-                <div className="absolute right-0 top-12 z-50 rounded-2xl p-4 w-72 shadow-2xl dropdown-surface">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-semibold text-slate-200">Recent Activity</span>
-                    <button onClick={() => setShowBell(false)}>
-                      <X className="w-4 h-4 text-slate-400" />
-                    </button>
-                  </div>
-                  {activity.length === 0 ? (
-                    <p className="text-xs text-slate-500">No activity yet today.</p>
-                  ) : (
-                    <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
-                      {activity.slice(0, 8).map(item => (
-                        <div key={item.id} className="flex items-center gap-2 text-sm">
-                          <span className="text-slate-300 flex-1 truncate">{item.label}</span>
-                          <span className="text-xs text-slate-500 whitespace-nowrap">
-                            {item.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+            {/* Bell — navigates to Activity Log */}
+            <button
+              onClick={() => navigate('/log')}
+              className="w-10 h-10 flex items-center justify-center rounded-2xl relative"
+              style={{ background: 'rgba(167,139,250,0.1)', border: '1px solid rgba(167,139,250,0.2)' }}
+            >
+              <Bell className="w-5 h-5 text-violet-300" />
+              {activity.length > 0 && (
+                <span className="absolute top-2 right-2 w-2 h-2 bg-fuchsia-400 rounded-full" />
               )}
-            </div>
+            </button>
           </div>
 
           {/* Baby info row */}
@@ -216,22 +189,22 @@ export default function DashboardPage() {
 
           {/* Today stats strip */}
           <div className="flex gap-2">
-            <div className="flex-1 rounded-2xl px-3 py-2.5 text-center"
-              style={{ background: 'rgba(124,58,237,0.15)', border: '1px solid rgba(167,139,250,0.12)' }}>
-              <p className="text-xl font-bold text-white count-up">{feedCount}</p>
-              <p className="text-xs text-violet-300">feeds</p>
+            <div className="flex-1 rounded-2xl px-3 py-3 text-center"
+              style={{ background: 'rgba(124,58,237,0.16)', border: '1px solid rgba(167,139,250,0.22)' }}>
+              <p className="text-3xl font-bold text-violet-400 count-up leading-none">{feedCount}</p>
+              <p className="text-xs font-medium text-violet-300 mt-1">feeds</p>
             </div>
-            <div className="flex-1 rounded-2xl px-3 py-2.5 text-center"
-              style={{ background: 'rgba(6,182,212,0.12)', border: '1px solid rgba(6,182,212,0.15)' }}>
-              <p className="text-xl font-bold text-white count-up">{diaperCount}</p>
-              <p className="text-xs text-cyan-300">diapers</p>
+            <div className="flex-1 rounded-2xl px-3 py-3 text-center"
+              style={{ background: 'rgba(6,182,212,0.13)', border: '1px solid rgba(6,182,212,0.22)' }}>
+              <p className="text-3xl font-bold text-cyan-400 count-up leading-none">{diaperCount}</p>
+              <p className="text-xs font-medium text-cyan-300 mt-1">diapers</p>
             </div>
-            <div className="flex-1 rounded-2xl px-3 py-2.5 text-center"
-              style={{ background: 'rgba(236,72,153,0.12)', border: '1px solid rgba(236,72,153,0.15)' }}>
-              <p className="text-xl font-bold text-white">
+            <div className="flex-1 rounded-2xl px-3 py-3 text-center"
+              style={{ background: 'rgba(236,72,153,0.13)', border: '1px solid rgba(236,72,153,0.22)' }}>
+              <p className="text-3xl font-bold text-fuchsia-400 leading-none">
                 {intervalMinutes ? `${Math.round(intervalMinutes / 60)}h` : '—'}
               </p>
-              <p className="text-xs text-fuchsia-300">interval</p>
+              <p className="text-xs font-medium text-fuchsia-300 mt-1">interval</p>
             </div>
           </div>
         </div>
@@ -289,6 +262,7 @@ export default function DashboardPage() {
           onClose={() => setShowWeightLog(false)}
         />
       )}
+
     </div>
   )
 }

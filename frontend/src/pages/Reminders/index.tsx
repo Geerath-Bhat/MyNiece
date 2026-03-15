@@ -6,21 +6,21 @@ import { useBaby } from '@/hooks/useBaby'
 import { useCanEdit } from '@/hooks/useCanEdit'
 import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner'
 
-const TYPE_CFG: Record<string, { icon: React.ElementType; color: string; bg: string }> = {
-  feeding:           { icon: Milk,     color: 'text-indigo-400', bg: 'bg-indigo-500/10' },
-  diaper:            { icon: Baby,     color: 'text-cyan-400',   bg: 'bg-cyan-500/10'   },
-  vitamin_d:         { icon: Pill,     color: 'text-amber-400',  bg: 'bg-amber-500/10'  },
-  massage:           { icon: Dumbbell, color: 'text-emerald-400',bg: 'bg-emerald-500/10'},
-  pre_feed_exercise: { icon: Dumbbell, color: 'text-violet-400', bg: 'bg-violet-500/10' },
-  custom:            { icon: Sparkles, color: 'text-pink-400',   bg: 'bg-pink-500/10'   },
+const TYPE_CFG: Record<string, { icon: React.ElementType; color: string; bg: string; accent: string }> = {
+  feeding:           { icon: Milk,     color: 'text-indigo-400',  bg: 'bg-indigo-500/10',  accent: 'rgba(99,102,241,0.35)'  },
+  diaper:            { icon: Baby,     color: 'text-cyan-400',    bg: 'bg-cyan-500/10',    accent: 'rgba(6,182,212,0.35)'   },
+  vitamin_d:         { icon: Pill,     color: 'text-amber-400',   bg: 'bg-amber-500/10',   accent: 'rgba(245,158,11,0.35)'  },
+  massage:           { icon: Dumbbell, color: 'text-emerald-400', bg: 'bg-emerald-500/10', accent: 'rgba(16,185,129,0.35)'  },
+  pre_feed_exercise: { icon: Dumbbell, color: 'text-violet-400',  bg: 'bg-violet-500/10',  accent: 'rgba(124,58,237,0.35)'  },
+  custom:            { icon: Sparkles, color: 'text-pink-400',    bg: 'bg-pink-500/10',    accent: 'rgba(236,72,153,0.35)'  },
 }
 
 function formatDetail(r: Reminder): string {
   if (r.interval_minutes) {
     const h = r.interval_minutes / 60
-    return `Every ${h % 1 === 0 ? h + 'h' : r.interval_minutes + 'min'}`
+    return `Every ${h % 1 === 0 ? h.toFixed(0) : h}h`
   }
-  if (r.time_of_day) return `Daily at ${r.time_of_day}`
+  if (r.time_of_day) return `Daily at ${r.time_of_day.slice(0, 5)}`
   return '—'
 }
 
@@ -95,9 +95,9 @@ function ReminderModal({ babyId, existing, onSaved, onClose }: ReminderModalProp
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
       <div
-        className="w-full max-w-md modal-surface rounded-t-3xl p-6 flex flex-col gap-4"
+        className="w-full max-w-md modal-surface rounded-3xl p-6 flex flex-col gap-4"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between">
@@ -260,7 +260,8 @@ export default function RemindersPage() {
             const cfg = TYPE_CFG[r.type] ?? TYPE_CFG.custom
             const Icon = cfg.icon
             return (
-              <div key={r.id} className="glass flex items-center gap-3 px-4 py-3.5 group">
+              <div key={r.id} className="glass flex items-center gap-3 px-4 py-3.5 group"
+                style={{ borderLeft: `3px solid ${cfg.accent}` }}>
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${cfg.bg}`}>
                   <Icon className={`w-5 h-5 ${cfg.color}`} />
                 </div>
@@ -288,8 +289,8 @@ export default function RemindersPage() {
                 )}
                 {/* Toggle switch — read-only for unverified */}
                 <button onClick={() => canEdit && toggle(r)} disabled={!canEdit}
-                  className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${r.is_enabled ? 'bg-indigo-500' : 'bg-slate-700'} ${!canEdit ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${r.is_enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  className={`relative w-11 h-6 rounded-full overflow-hidden transition-colors shrink-0 ${r.is_enabled ? 'bg-indigo-500' : 'bg-slate-700'} ${!canEdit ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  <span className={`absolute top-0.5 left-0 w-5 h-5 bg-white rounded-full shadow transition-transform ${r.is_enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </button>
               </div>
             )

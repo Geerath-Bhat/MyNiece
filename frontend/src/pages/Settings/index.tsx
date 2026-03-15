@@ -102,10 +102,13 @@ function AvatarUpload({
 function Section({ title, icon: Icon, color, children }: {
   title: string; icon: React.ElementType; color: string; children: React.ReactNode
 }) {
+  const iconBg = color.replace('text-', 'bg-').replace('400', '400/15')
   return (
-    <div className="glass-strong p-4 flex flex-col gap-3">
+    <div className="glass-hero p-4 flex flex-col gap-3">
       <div className="flex items-center gap-2 mb-1">
-        <Icon className={`w-4 h-4 ${color}`} />
+        <div className={`w-7 h-7 rounded-xl flex items-center justify-center ${iconBg}`}>
+          <Icon className={`w-3.5 h-3.5 ${color}`} />
+        </div>
         <p className="text-sm font-semibold text-slate-200">{title}</p>
       </div>
       {children}
@@ -467,7 +470,7 @@ export default function SettingsPage() {
               className="bg-white/5 rounded-xl px-3 py-2 flex items-center justify-between w-full hover:bg-white/10 transition-colors"
               title="Tap to copy"
             >
-              <span className="text-xs text-slate-400">Invite code <span className="text-slate-600">(tap to copy)</span></span>
+              <span className="text-xs text-slate-400">Invite code <span className="text-slate-500">(tap to copy)</span></span>
               <span className="text-sm font-mono font-bold text-violet-300 tracking-wider">{inviteCode}</span>
             </button>
           )}
@@ -490,7 +493,7 @@ export default function SettingsPage() {
                 </div>
               )}
               <span className="text-xs text-slate-300 flex-1">{m.display_name}</span>
-              <span className="text-xs text-slate-600 capitalize">{m.role}</span>
+              <span className="text-xs text-slate-400 capitalize">{m.role}</span>
             </div>
           ))}
         </Section>
@@ -538,7 +541,7 @@ export default function SettingsPage() {
         </button>
       </div>
 
-      <p className="text-center text-xs text-slate-700 pb-2">CryBaby v1.0 · Made with ♡</p>
+      <p className="text-center text-xs text-slate-500 pb-2">CryBaby v1.0 · Made with ♡</p>
     </div>
   )
 }

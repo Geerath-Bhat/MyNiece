@@ -10,9 +10,9 @@ export interface ActivityItem {
 }
 
 const typeConfig = {
-  feed:   { icon: Milk,     color: 'text-violet-400',  bg: 'bg-violet-500/15', dot: 'bg-violet-400' },
-  diaper: { icon: Baby,     color: 'text-cyan-400',    bg: 'bg-cyan-500/15',   dot: 'bg-cyan-400'   },
-  custom: { icon: Sparkles, color: 'text-fuchsia-400', bg: 'bg-fuchsia-500/15', dot: 'bg-fuchsia-400' },
+  feed:   { icon: Milk,     color: 'text-violet-400',  bg: 'bg-violet-500/15',  dot: 'bg-violet-400',  accent: 'rgba(124,58,237,0.35)'  },
+  diaper: { icon: Baby,     color: 'text-cyan-400',    bg: 'bg-cyan-500/15',    dot: 'bg-cyan-400',    accent: 'rgba(6,182,212,0.35)'   },
+  custom: { icon: Sparkles, color: 'text-fuchsia-400', bg: 'bg-fuchsia-500/15', dot: 'bg-fuchsia-400', accent: 'rgba(217,70,239,0.35)'  },
 }
 
 interface Props { items: ActivityItem[] }
@@ -32,7 +32,7 @@ export function RecentActivity({ items }: Props) {
           <div className="absolute left-[18px] top-4 bottom-4 w-px bg-gradient-to-b from-violet-500/30 via-fuchsia-500/20 to-transparent" />
 
           {items.slice(0, 6).map((item, i) => {
-            const { icon: Icon, color, bg, dot } = typeConfig[item.type]
+            const { icon: Icon, color, bg, dot, accent } = typeConfig[item.type]
             return (
               <div key={item.id} className={`relative flex items-start gap-3 py-2.5 ${i < items.length - 1 ? 'pb-3' : ''}`}>
                 {/* Timeline dot */}
@@ -44,7 +44,8 @@ export function RecentActivity({ items }: Props) {
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 min-w-0 glass px-3 py-2.5">
+                <div className="flex-1 min-w-0 glass px-3 py-2.5"
+                  style={{ borderLeft: `3px solid ${accent}` }}>
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-medium text-slate-200 truncate">{item.label}</p>
                     <span className="text-xs text-slate-500 whitespace-nowrap shrink-0">

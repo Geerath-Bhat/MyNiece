@@ -39,7 +39,7 @@ function Trend({ value, unit = '' }: { value: number | null | undefined; unit?: 
 }
 
 // ── Stat card ─────────────────────────────────────────────────────
-function StatCard({ label, value, sub, trend, trendUnit, icon: Icon, color, gradient }: {
+function StatCard({ label, value, sub, trend, trendUnit, icon: Icon, color, gradient, accentColor }: {
   label: string
   value: string
   sub?: string
@@ -48,17 +48,21 @@ function StatCard({ label, value, sub, trend, trendUnit, icon: Icon, color, grad
   icon: React.ElementType
   color: string
   gradient: string
+  accentColor: string
 }) {
   return (
     <div className="relative overflow-hidden rounded-2xl p-4 flex flex-col gap-2"
-      style={{ background: gradient, border: '1px solid rgba(255,255,255,0.06)' }}>
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-400 font-medium">{label}</p>
+      style={{ background: gradient, border: `1px solid ${accentColor}40` }}>
+      {/* Top accent line */}
+      <div className="absolute top-0 left-0 right-0 h-[3px]"
+        style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}66)`, opacity: 0.9 }} />
+      <div className="flex items-center justify-between mt-1">
+        <p className="text-xs text-slate-500 font-medium">{label}</p>
         <div className={`w-7 h-7 rounded-xl flex items-center justify-center ${color.replace('text-', 'bg-').replace('400', '400/15')}`}>
           <Icon className={`w-3.5 h-3.5 ${color}`} />
         </div>
       </div>
-      <p className="text-2xl font-bold text-white leading-tight">{value}</p>
+      <p className="text-2xl font-bold leading-tight" style={{ color: accentColor }}>{value}</p>
       <div className="flex items-center justify-between">
         {sub && <p className="text-xs text-slate-500">{sub}</p>}
         {trend !== undefined && <Trend value={trend} unit={trendUnit} />}
@@ -102,6 +106,8 @@ export default function AnalyticsPage() {
     padding: '8px 12px',
   }), [theme])
   const dotStroke = theme === 'dark' ? '#0d0b18' : '#f0ebff'
+  const gridStroke = theme === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(124,58,237,0.08)'
+  const axisColor  = theme === 'dark' ? '#64748b' : '#7b68b0'
   const [feeding, setFeeding] = useState<FeedingAnalytics | null>(null)
   const [diapers, setDiapers] = useState<DiaperAnalytics | null>(null)
   const [weekly, setWeekly] = useState<WeeklySummary | null>(null)
@@ -187,17 +193,20 @@ export default function AnalyticsPage() {
           label="Feeds this week" value={String(weekly?.total_feeds ?? 0)}
           sub="total sessions" icon={TrendingUp} color="text-violet-400"
           gradient="linear-gradient(135deg, rgba(124,58,237,0.18) 0%, rgba(124,58,237,0.06) 100%)"
+          accentColor="#7c3aed"
         />
         <StatCard
           label="Diapers this week" value={String(weekly?.total_diapers ?? 0)}
           sub="total changes" icon={Droplets} color="text-cyan-400"
           gradient="linear-gradient(135deg, rgba(6,182,212,0.18) 0%, rgba(6,182,212,0.06) 100%)"
+          accentColor="#06b6d4"
         />
         <StatCard
           label="Avg feed interval"
           value={weekly?.avg_feeding_interval_hours ? `${weekly.avg_feeding_interval_hours.toFixed(1)}h` : '—'}
           sub="this week" icon={Clock} color="text-fuchsia-400"
           gradient="linear-gradient(135deg, rgba(236,72,153,0.18) 0%, rgba(236,72,153,0.06) 100%)"
+          accentColor="#ec4899"
         />
         <StatCard
           label="Last weight"
@@ -205,11 +214,12 @@ export default function AnalyticsPage() {
           trend={weekly?.weight_change_kg ?? null} trendUnit="kg"
           icon={Scale} color="text-emerald-400"
           gradient="linear-gradient(135deg, rgba(16,185,129,0.18) 0%, rgba(16,185,129,0.06) 100%)"
+          accentColor="#10b981"
         />
       </div>
 
       {/* ── Feeding trend ───────────────────────────────────────────── */}
-      <div className="glass p-4 slide-up-2">
+      <div className="glass-hero p-4 slide-up-2">
         <SectionHeader icon={TrendingUp} color="text-violet-400" title="Feeding Trend" sub="Last 7 days" />
         {feedChartData.length === 0 ? (
           <p className="text-xs text-slate-500 text-center py-8">No feeding data yet</p>
@@ -222,9 +232,9 @@ export default function AnalyticsPage() {
                   <stop offset="100%" stopColor="#7c3aed" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-              <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+              <XAxis dataKey="date" tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip contentStyle={tooltipStyle} cursor={{ stroke: 'rgba(124,58,237,0.3)', strokeWidth: 1 }} />
               <Area
                 type="monotone" dataKey="feeds" stroke="#7c3aed" strokeWidth={2.5}
@@ -238,7 +248,7 @@ export default function AnalyticsPage() {
 
       {/* ── Diapers ─────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-4">
-        <div className="glass p-4 slide-up-3">
+        <div className="glass-hero p-4 slide-up-3">
           <SectionHeader icon={Droplets} color="text-cyan-400" title="Diaper Changes" sub="Last 7 days by type" />
           {diaperChartData.length === 0 ? (
             <p className="text-xs text-slate-500 text-center py-8">No diaper data yet</p>
@@ -259,9 +269,9 @@ export default function AnalyticsPage() {
                     <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.5} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                <XAxis dataKey="date" tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
                 <Bar dataKey="wet" name="Wet" stackId="a" fill="url(#wetGrad)" />
                 <Bar dataKey="dirty" name="Dirty" stackId="a" fill="url(#dirtyGrad)" />
@@ -287,7 +297,7 @@ export default function AnalyticsPage() {
       </div>
 
       {/* ── Sleep ───────────────────────────────────────────────────── */}
-      <div className="glass p-4 slide-up-4">
+      <div className="glass-hero p-4 slide-up-4">
         <SectionHeader icon={Moon} color="text-indigo-400" title="Sleep Duration"
           sub={avgSleepHours ? `avg ${avgSleepHours}h per session` : 'Last 14 days'} />
         {sleepChartData.length === 0 ? (
@@ -301,9 +311,9 @@ export default function AnalyticsPage() {
                   <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.5} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-              <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} unit="h" />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+              <XAxis dataKey="date" tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} unit="h" />
               <Tooltip
                 formatter={(v: unknown) => [`${v}h`, 'Sleep']}
                 contentStyle={tooltipStyle}
@@ -317,12 +327,12 @@ export default function AnalyticsPage() {
 
       {/* ── Expenses ────────────────────────────────────────────────── */}
       {(expensePieData.length > 0 || expenseSummary) && (
-        <div className="glass p-4 slide-up-4">
+        <div className="glass-hero p-4 slide-up-4">
           <div className="flex items-center justify-between mb-3">
             <SectionHeader icon={Wallet} color="text-amber-400" title="Expenses"
               sub={format(new Date(), 'MMMM yyyy')} />
             {expenseSummary?.total != null && (
-              <p className="text-lg font-bold text-white">₹{expenseSummary.total.toFixed(0)}</p>
+              <p className="text-lg font-bold" style={{ color: '#f59e0b' }}>₹{expenseSummary.total.toFixed(0)}</p>
             )}
           </div>
           {expensePieData.length === 0 ? (
@@ -360,7 +370,7 @@ export default function AnalyticsPage() {
       )}
 
       {/* ── Weight trend ─────────────────────────────────────────────── */}
-      <div className="glass p-4 flex flex-col gap-3 slide-up-5">
+      <div className="glass-hero p-4 flex flex-col gap-3 slide-up-5">
         <div className="flex items-center justify-between">
           <SectionHeader icon={Scale} color="text-emerald-400" title="Weight Trend" />
           <span className="text-xs text-slate-500 -mt-3">Log from Dashboard → Weight</span>
@@ -375,9 +385,9 @@ export default function AnalyticsPage() {
                   <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-              <XAxis dataKey="date" tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#64748b', fontSize: 11 }} axisLine={false} tickLine={false} unit="kg" domain={['auto', 'auto']} />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+              <XAxis dataKey="date" tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: axisColor, fontSize: 11 }} axisLine={false} tickLine={false} unit="kg" domain={['auto', 'auto']} />
               <Tooltip formatter={(v: unknown) => [`${v}kg`, 'Weight']} contentStyle={tooltipStyle}
                 cursor={{ stroke: 'rgba(16,185,129,0.3)', strokeWidth: 1 }} />
               <Area
@@ -396,7 +406,7 @@ export default function AnalyticsPage() {
             {weights.slice(0, 4).map(w => (
               <div key={w.id} className="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0">
                 <div>
-                  <span className="text-sm font-bold text-white">{w.weight_kg} kg</span>
+                  <span className="text-sm font-bold" style={{ color: '#10b981' }}>{w.weight_kg} kg</span>
                   {w.note && <span className="text-xs text-slate-500 ml-2">{w.note}</span>}
                 </div>
                 <span className="text-xs text-slate-500">{format(parseUTC(w.date), 'dd MMM yyyy')}</span>

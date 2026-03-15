@@ -56,7 +56,7 @@ export function UpcomingReminders({ babyId }: Props) {
   if (reminders.length === 0) return null
 
   return (
-    <div className="glass rounded-2xl p-4 slide-up-2">
+    <div className="glass-hero p-4 slide-up-2">
       <div className="flex items-center gap-2 mb-3">
         <Bell className="w-4 h-4 text-indigo-400" />
         <h2 className="text-sm font-semibold text-slate-200">Upcoming Reminders</h2>
