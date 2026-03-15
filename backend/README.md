@@ -23,6 +23,7 @@ API docs: `http://localhost:8000/docs`
 | `DATABASE_URL` | No | Defaults to SQLite. Set to Postgres URL for production |
 | `GROQ_API_KEY` | No* | Free LLM for voice commands — sign up at console.groq.com |
 | `GEMINI_API_KEY` | No* | Alternative free LLM — aistudio.google.com |
+| `LLM_API_KEY` | No* | Anthropic/OpenAI key — fallback for AI insights |
 | `VAPID_PRIVATE_KEY` | No | Required for push notifications |
 | `VAPID_PUBLIC_KEY` | No | Must match frontend `VITE_VAPID_PUBLIC_KEY` |
 | `VAPID_CLAIM_EMAIL` | No | Your email, included in VAPID claims |
@@ -30,6 +31,7 @@ API docs: `http://localhost:8000/docs`
 | `SMTP_USER` | No | Gmail address for OTP email verification |
 | `SMTP_PASSWORD` | No | Gmail App Password (16-char, not your main password) |
 | `CORS_ORIGINS` | No | Defaults to `http://localhost:5173` |
+| `SUPER_ADMIN_EMAIL` | No | This email gets super_admin role automatically on register/login |
 
 *One of `GROQ_API_KEY` or `GEMINI_API_KEY` needed for voice commands (both free).
 

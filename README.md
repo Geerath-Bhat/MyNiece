@@ -42,19 +42,21 @@ Open `http://localhost:5173`
 | Feature | Notes |
 |---------|-------|
 | Auth + OTP email verification | Gmail SMTP, optional |
-| Household sharing | Invite code, multiple caregivers |
+| Household sharing | Invite code, multiple caregivers per baby |
+| Read-only mode | Unverified/invited users get view-only access |
 | Baby profile + avatar | Photo upload, age display |
 | Activity logs | Feed, diaper, custom events, past event logging |
 | Sleep tracker | Start/stop sessions, duration history |
 | Weight tracking | Log from Dashboard, trend chart in Analytics |
-| Smart reminders | Interval or time-of-day, APScheduler |
-| Push notifications | Web Push via VAPID |
+| Smart reminders | Interval or time-of-day, push via APScheduler |
+| Push notifications | Web Push via VAPID (installable PWA) |
 | Telegram notifications | Bot alerts for all household members |
-| Voice commands | Web Speech API + LLM intent extraction |
+| Voice commands | Web Speech API + LLM intent extraction (Groq/Gemini) |
 | Analytics | Feeding trend, diaper breakdown, sleep, expenses, weight |
-| Expense tracking | Categories, monthly pie chart |
+| Expense tracking | Categories, monthly total, CSV export |
+| Admin panel | Super-admin dashboard — households, users, system stats |
 | PWA | Installable on iOS & Android, offline banner |
-| Real-time updates | SSE activity feed across devices |
+| Real-time updates | SSE activity feed across all household devices |
 
 ## Deploy
 
