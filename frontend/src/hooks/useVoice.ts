@@ -49,17 +49,21 @@ export function useVoice({ onResult, lang = 'en-US' }: UseVoiceOptions) {
   const [supported] = useState(() => !!getSpeechRecognition())
   const recRef = useRef<SpeechRec | null>(null)
   const finalRef = useRef('')                  // accumulated confirmed words
+  const nextFinalIdx = useRef(0)               // track processed final results (Android fix)
   const silenceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const submittedRef = useRef(false)           // prevent double-submit on mobile
 
   const clearTimer = () => {
     if (silenceTimer.current) clearTimeout(silenceTimer.current)
   }
 
-  const submit = useCallback((rec: SpeechRec) => {
+  const submit = useCallback((rec: SpeechRec, fromEnd = false) => {
+    if (submittedRef.current) return
     const text = finalRef.current.trim()
     finalRef.current = ''
     if (text) {
-      rec.stop()
+      submittedRef.current = true
+      if (!fromEnd) rec.stop()
       onResult(text)
     }
   }, [onResult])
@@ -72,6 +76,8 @@ export function useVoice({ onResult, lang = 'en-US' }: UseVoiceOptions) {
     setError('')
     setInterim('')
     finalRef.current = ''
+    nextFinalIdx.current = 0
+    submittedRef.current = false
 
     const rec = new SR()
     rec.continuous = true
@@ -84,14 +90,20 @@ export function useVoice({ onResult, lang = 'en-US' }: UseVoiceOptions) {
       clearTimer()
       setListening(false)
       setInterim('')
+      // Mobile: Chrome auto-stops even with continuous=true — submit whatever we have
+      submit(rec, true)
       finalRef.current = ''
     }
 
     rec.onresult = (e) => {
       let inter = ''
-      for (let i = e.resultIndex; i < e.results.length; i++) {
+      // Use nextFinalIdx to avoid re-processing old finals on Android
+      // (Android Chrome sometimes resets resultIndex to 0 on every event)
+      const startIdx = Math.max(e.resultIndex, nextFinalIdx.current)
+      for (let i = startIdx; i < e.results.length; i++) {
         if (e.results[i].isFinal) {
           finalRef.current += e.results[i][0].transcript + ' '
+          nextFinalIdx.current = i + 1
         } else {
           inter += e.results[i][0].transcript
         }
@@ -125,12 +137,9 @@ export function useVoice({ onResult, lang = 'en-US' }: UseVoiceOptions) {
 
   const stop = useCallback(() => {
     clearTimer()
-    // If user manually stops, submit whatever we have
-    const text = finalRef.current.trim()
-    finalRef.current = ''
+    // If user manually stops, submit whatever we have (rec.stop() will trigger onend)
     recRef.current?.stop()
-    if (text) onResult(text)
-  }, [onResult])
+  }, [])
 
   return { listening, interim, supported, error, start, stop }
 }

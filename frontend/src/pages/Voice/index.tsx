@@ -16,19 +16,40 @@ const EXAMPLES = [
 ]
 
 // Browser TTS — free, no API needed
+function pickVoice(): SpeechSynthesisVoice | null {
+  const voices = window.speechSynthesis.getVoices()
+  return (
+    voices.find(v => /samantha|karen|moira|fiona|victoria/i.test(v.name)) ??  // Apple
+    voices.find(v => /google uk english female/i.test(v.name)) ??             // Chrome desktop
+    voices.find(v => /female|woman/i.test(v.name)) ??                         // generic label
+    voices.find(v => /en[-_]?(us|gb|au)/i.test(v.lang) && !v.localService) ?? // cloud English
+    null
+  )
+}
+
 function speak(text: string) {
   if (!('speechSynthesis' in window)) return
   window.speechSynthesis.cancel()
-  const utt = new SpeechSynthesisUtterance(text)
-  utt.rate = 0.88
-  utt.pitch = 1.6
-  // Prefer a female/soft voice if available
-  const voices = window.speechSynthesis.getVoices()
-  const preferred = voices.find(v =>
-    /female|zira|samantha|karen|moira|fiona|victoria|google uk english female/i.test(v.name)
-  )
-  if (preferred) utt.voice = preferred
-  window.speechSynthesis.speak(utt)
+
+  const doSpeak = () => {
+    const utt = new SpeechSynthesisUtterance(text)
+    utt.rate = 0.92
+    utt.pitch = 1.05   // natural pitch — 1.6 was robotic/harsh
+    utt.volume = 0.9
+    const v = pickVoice()
+    if (v) utt.voice = v
+    window.speechSynthesis.speak(utt)
+  }
+
+  // getVoices() is async on Android — wait for the list if it's empty
+  if (window.speechSynthesis.getVoices().length > 0) {
+    doSpeak()
+  } else {
+    window.speechSynthesis.onvoiceschanged = () => {
+      window.speechSynthesis.onvoiceschanged = null
+      doSpeak()
+    }
+  }
 }
 
 export default function VoicePage() {

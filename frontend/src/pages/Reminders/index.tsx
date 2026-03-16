@@ -240,8 +240,15 @@ export default function RemindersPage() {
   }, [baby])
 
   async function toggle(r: Reminder) {
-    const updated = await remindersApi.toggle(r.id, !r.is_enabled)
-    setReminders(prev => prev.map(x => x.id === r.id ? updated : x))
+    // Optimistically update UI
+    setReminders(prev => prev.map(x => x.id === r.id ? { ...x, is_enabled: !r.is_enabled } : x))
+    try {
+      const updated = await remindersApi.toggle(r.id, !r.is_enabled)
+      setReminders(prev => prev.map(x => x.id === r.id ? updated : x))
+    } catch {
+      // Revert on failure
+      setReminders(prev => prev.map(x => x.id === r.id ? { ...x, is_enabled: r.is_enabled } : x))
+    }
   }
 
   async function handleDelete(id: string) {
@@ -322,8 +329,8 @@ export default function RemindersPage() {
                 )}
                 {/* Toggle switch — read-only for unverified */}
                 <button onClick={() => canEdit && toggle(r)} disabled={!canEdit}
-                  className={`relative w-11 h-6 rounded-full overflow-hidden transition-colors shrink-0 ${r.is_enabled ? 'bg-indigo-500' : 'bg-slate-700'} ${!canEdit ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                  <span className={`absolute top-0.5 left-0 w-5 h-5 bg-white rounded-full shadow transition-transform ${r.is_enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                  className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${r.is_enabled ? 'bg-indigo-500' : 'bg-slate-700'} ${!canEdit ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  <span className={`pointer-events-none absolute top-0.5 left-0 w-5 h-5 bg-white rounded-full shadow transition-transform ${r.is_enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </button>
               </div>
             )
