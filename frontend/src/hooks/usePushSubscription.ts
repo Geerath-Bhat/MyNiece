@@ -40,7 +40,16 @@ export function usePushSubscription() {
 
     const reg = await swReadyWithTimeout(8000)
     let sub = await reg.pushManager.getSubscription()
-    if (!sub) {
+    try {
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlB64ToUint8Array(vapidKey),
+        })
+      }
+    } catch {
+      // Stale subscription — clear it and retry once
+      if (sub) await sub.unsubscribe()
       sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlB64ToUint8Array(vapidKey),
