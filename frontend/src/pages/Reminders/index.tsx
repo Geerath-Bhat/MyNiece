@@ -28,7 +28,8 @@ function formatDetail(r: Reminder): string {
 
 interface ReminderModalProps {
   babyId: string
-  existing?: Reminder          // if provided → edit mode
+  existing?: Reminder
+  existingLabels?: string[]    // for duplicate detection
   onSaved: (r: Reminder) => void
   onClose: () => void
 }
@@ -38,7 +39,7 @@ const SCHEDULE_TYPES = [
   { label: 'Daily at fixed time', value: 'fixed' },
 ]
 
-function ReminderModal({ babyId, existing, onSaved, onClose }: ReminderModalProps) {
+function ReminderModal({ babyId, existing, existingLabels = [], onSaved, onClose }: ReminderModalProps) {
   const isEdit = !!existing
   const [label, setLabel] = useState(existing?.label ?? '')
   const [type, setType] = useState(existing?.type ?? 'custom')
@@ -54,23 +55,27 @@ function ReminderModal({ babyId, existing, onSaved, onClose }: ReminderModalProp
 
   async function handleSave() {
     if (!label.trim()) { setError('Label is required'); return }
+    if (!isEdit && existingLabels.some(l => l.toLowerCase() === label.trim().toLowerCase())) {
+      setError('A reminder with this label already exists')
+      return
+    }
     setSaving(true)
     setError('')
     try {
       let result: Reminder
       if (isEdit && existing) {
         // Edit existing
-        const patch: Partial<Reminder> = { label: label.trim(), type }
+        const patch: Record<string, unknown> = { label: label.trim(), type }
         if (scheduleType === 'interval') {
           const mins = Math.round(parseFloat(hours) * 60)
           if (!mins || mins < 1) { setError('Enter a valid interval'); setSaving(false); return }
           patch.interval_minutes = mins
-          patch.time_of_day = undefined
+          patch.time_of_day = null
         } else {
           patch.time_of_day = timeOfDay
-          patch.interval_minutes = undefined
+          patch.interval_minutes = null
         }
-        result = await remindersApi.patch(existing.id, patch)
+        result = await remindersApi.patch(existing.id, patch as Partial<Reminder>)
       } else {
         // Create new
         const payload: Parameters<typeof remindersApi.create>[0] = {
@@ -260,7 +265,7 @@ export default function RemindersPage() {
             const cfg = TYPE_CFG[r.type] ?? TYPE_CFG.custom
             const Icon = cfg.icon
             return (
-              <div key={r.id} className="glass flex items-center gap-3 px-4 py-3.5 group"
+              <div key={r.id} className="glass flex items-center gap-3 px-4 py-3.5"
                 style={{ borderLeft: `3px solid ${cfg.accent}` }}>
                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${cfg.bg}`}>
                   <Icon className={`w-5 h-5 ${cfg.color}`} />
@@ -273,7 +278,7 @@ export default function RemindersPage() {
                   <>
                     <button
                       onClick={() => { setConfirmDelete(null); setEditing(r) }}
-                      className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-violet-400 transition-all"
+                      className="text-slate-500 hover:text-violet-400 transition-colors"
                       title="Edit reminder"
                     >
                       <Pencil className="w-4 h-4" />
@@ -281,7 +286,7 @@ export default function RemindersPage() {
                     <button
                       onClick={() => setConfirmDelete(r.id)}
                       title="Delete reminder"
-                      className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-red-400 transition-all"
+                      className="text-slate-500 hover:text-red-400 transition-colors"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -346,6 +351,7 @@ export default function RemindersPage() {
       {showAdd && baby && (
         <ReminderModal
           babyId={baby.id}
+          existingLabels={reminders.map(r => r.label)}
           onSaved={handleSaved}
           onClose={() => setShowAdd(false)}
         />

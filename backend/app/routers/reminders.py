@@ -77,7 +77,7 @@ def patch_reminder(
     db: Session = Depends(get_db),
 ):
     r = _assert_reminder(db, reminder_id, household_id)
-    for k, v in body.model_dump(exclude_none=True).items():
+    for k, v in body.model_dump(exclude_unset=True).items():
         setattr(r, k, v)
     set_next_fire(r, user.timezone)
     db.commit()
