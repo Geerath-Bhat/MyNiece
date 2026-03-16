@@ -62,6 +62,6 @@ def send_otp_email(to_email: str, code: str, display_name: str) -> None:
     with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
         server.starttls()
         server.login(settings.smtp_user, settings.smtp_password)
-        server.sendmail(settings.smtp_user, to_email, msg.as_string())
+        server.sendmail(sender, to_email, msg.as_string())
 
     logger.info("OTP email sent via SMTP to %s", _mask_email(to_email))

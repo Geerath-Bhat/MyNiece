@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Bell, Milk, Baby, Pill, Dumbbell, Sparkles, Plus, Loader2, X, Pencil, Trash2 } from 'lucide-react'
+import { Bell, Milk, Baby, Pill, Dumbbell, Sparkles, Plus, Loader2, X, Pencil, Trash2, Volume2 } from 'lucide-react'
+import { playReminderAlarm } from '@/utils/alarm'
 import { remindersApi } from '@/api/reminders'
 import type { Reminder } from '@/api/reminders'
 import { useBaby } from '@/hooks/useBaby'
@@ -17,8 +18,11 @@ const TYPE_CFG: Record<string, { icon: React.ElementType; color: string; bg: str
 
 function formatDetail(r: Reminder): string {
   if (r.interval_minutes) {
-    const h = r.interval_minutes / 60
-    return `Every ${h % 1 === 0 ? h.toFixed(0) : h}h`
+    const m = r.interval_minutes
+    if (m < 60) return `Every ${m}m`
+    const h = Math.floor(m / 60)
+    const rem = m % 60
+    return rem === 0 ? `Every ${h}h` : `Every ${h}h ${rem}m`
   }
   if (r.time_of_day) return `Daily at ${r.time_of_day.slice(0, 5)}`
   return '—'
@@ -46,8 +50,15 @@ function ReminderModal({ babyId, existing, existingLabels = [], onSaved, onClose
   const [scheduleType, setScheduleType] = useState<'interval' | 'fixed'>(
     existing?.time_of_day ? 'fixed' : 'interval'
   )
+  const [intervalUnit, setIntervalUnit] = useState<'hours' | 'minutes'>(
+    existing?.interval_minutes && existing.interval_minutes < 60 ? 'minutes' : 'hours'
+  )
   const [hours, setHours] = useState(
-    existing?.interval_minutes ? String(existing.interval_minutes / 60) : '2.5'
+    existing?.interval_minutes
+      ? existing.interval_minutes < 60
+        ? String(existing.interval_minutes)
+        : String(existing.interval_minutes / 60)
+      : '2.5'
   )
   const [timeOfDay, setTimeOfDay] = useState(existing?.time_of_day ?? '09:00')
   const [saving, setSaving] = useState(false)
@@ -63,11 +74,15 @@ function ReminderModal({ babyId, existing, existingLabels = [], onSaved, onClose
     setError('')
     try {
       let result: Reminder
+      const calcMins = () => {
+        const val = parseFloat(hours)
+        return intervalUnit === 'minutes' ? Math.round(val) : Math.round(val * 60)
+      }
+
       if (isEdit && existing) {
-        // Edit existing
         const patch: Record<string, unknown> = { label: label.trim(), type }
         if (scheduleType === 'interval') {
-          const mins = Math.round(parseFloat(hours) * 60)
+          const mins = calcMins()
           if (!mins || mins < 1) { setError('Enter a valid interval'); setSaving(false); return }
           patch.interval_minutes = mins
           patch.time_of_day = null
@@ -77,12 +92,11 @@ function ReminderModal({ babyId, existing, existingLabels = [], onSaved, onClose
         }
         result = await remindersApi.patch(existing.id, patch as Partial<Reminder>)
       } else {
-        // Create new
         const payload: Parameters<typeof remindersApi.create>[0] = {
           baby_id: babyId, type, label: label.trim(),
         }
         if (scheduleType === 'interval') {
-          const mins = Math.round(parseFloat(hours) * 60)
+          const mins = calcMins()
           if (!mins || mins < 1) { setError('Enter a valid interval'); setSaving(false); return }
           payload.interval_minutes = mins
         } else {
@@ -158,15 +172,29 @@ function ReminderModal({ babyId, existing, existingLabels = [], onSaved, onClose
         {/* Schedule input */}
         {scheduleType === 'interval' ? (
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs text-slate-400">Repeat every (hours)</label>
-            <input
-              type="number"
-              value={hours}
-              onChange={e => setHours(e.target.value)}
-              min="0.25"
-              step="0.25"
-              className="bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500/50"
-            />
+            <label className="text-xs text-slate-400">Repeat every</label>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                value={hours}
+                onChange={e => setHours(e.target.value)}
+                min="1"
+                step={intervalUnit === 'minutes' ? '1' : '0.25'}
+                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500/50"
+              />
+              <div className="flex rounded-xl overflow-hidden border border-white/10 text-xs font-medium shrink-0">
+                {(['hours', 'minutes'] as const).map(u => (
+                  <button
+                    key={u}
+                    type="button"
+                    onClick={() => { setIntervalUnit(u); setHours(u === 'minutes' ? '30' : '2.5') }}
+                    className={`px-3 py-2.5 transition-colors ${intervalUnit === u ? 'bg-indigo-600 text-white' : 'bg-white/5 text-slate-400'}`}
+                  >
+                    {u === 'hours' ? 'hrs' : 'min'}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         ) : (
           <div className="flex flex-col gap-1.5">
@@ -304,7 +332,15 @@ export default function RemindersPage() {
 
         <div className="glass p-4 flex items-center gap-3 slide-up-2">
           <Bell className="w-5 h-5 text-indigo-400 shrink-0" />
-          <p className="text-xs text-slate-400">Push notifications activate once you allow them in Settings.</p>
+          <p className="text-xs text-slate-400 flex-1">Push notifications activate once you allow them in Settings.</p>
+          <button
+            onClick={playReminderAlarm}
+            title="Test alarm sound"
+            className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 shrink-0 transition-colors"
+          >
+            <Volume2 className="w-4 h-4" />
+            Test
+          </button>
         </div>
       </div>
 

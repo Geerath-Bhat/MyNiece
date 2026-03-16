@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import { playReminderAlarm } from '@/utils/alarm'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ToastContainer } from '@/components/ui/Toast'
 import { useAuthStore } from '@/store/authStore'
@@ -30,10 +31,29 @@ function ThemeSync() {
   return null
 }
 
+function AlarmListener() {
+  const lastPlayed = useRef(0)
+  useEffect(() => {
+    if (!navigator.serviceWorker) return
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type !== 'REMINDER_ALARM') return
+      // Debounce — don't play twice within 5 seconds
+      const now = Date.now()
+      if (now - lastPlayed.current < 5000) return
+      lastPlayed.current = now
+      playReminderAlarm()
+    }
+    navigator.serviceWorker.addEventListener('message', handler)
+    return () => navigator.serviceWorker.removeEventListener('message', handler)
+  }, [])
+  return null
+}
+
 export default function App() {
   return (
     <BrowserRouter>
       <ThemeSync />
+      <AlarmListener />
       <ToastContainer />
       <Routes>
         {/* Public */}

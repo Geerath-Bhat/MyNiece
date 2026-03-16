@@ -15,20 +15,32 @@ self.addEventListener('push', (event) => {
     body?: string
     icon?: string
     badge?: string
-    data?: { url?: string }
+    data?: { url?: string; alarm?: boolean }
   }
 
+  const isAlarm = data.data?.alarm === true
   const title = data.title ?? 'CryBaby'
   const options = {
     body: data.body ?? '',
     icon: data.icon ?? '/icons/icon-192.png',
     badge: data.badge ?? '/icons/icon-192.png',
-    data: { url: data.data?.url ?? '/' },
-    vibrate: [200, 100, 200],
-    requireInteraction: false,
+    data: { url: data.data?.url ?? '/', alarm: isAlarm },
+    vibrate: isAlarm
+      ? [300, 100, 300, 100, 300, 200, 500]  // strong pattern for reminders
+      : [200, 100, 200],
+    requireInteraction: isAlarm,              // reminder stays until dismissed
   } as NotificationOptions
 
-  event.waitUntil(self.registration.showNotification(title, options))
+  const showPromise = self.registration.showNotification(title, options)
+
+  // Tell any open app windows to play the alarm sound
+  const notifyClients = isAlarm
+    ? self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
+        clients.forEach(client => client.postMessage({ type: 'REMINDER_ALARM' }))
+      })
+    : Promise.resolve()
+
+  event.waitUntil(Promise.all([showPromise, notifyClients]))
 })
 
 // ── Notification click: open/focus the app ───────────────────────────────────

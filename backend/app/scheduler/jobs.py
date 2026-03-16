@@ -31,7 +31,7 @@ def fire_reminder(reminder_id: str) -> None:
 
         push_sent = send_notification_to_household(
             db=db, baby_id=str(reminder.baby_id),
-            title=reminder.label, body=body,
+            title=reminder.label, body=body, alarm=True,
         )
         tg_sent = send_telegram_to_household(
             db=db, baby_id=str(reminder.baby_id),

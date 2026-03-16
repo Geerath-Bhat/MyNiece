@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 def send_notification_to_household(
-    db: Session, baby_id: str, title: str, body: str, url: str = "/"
+    db: Session, baby_id: str, title: str, body: str, url: str = "/", alarm: bool = False
 ) -> int:
     """Send a Web Push notification to all household members. Returns sent count."""
     if not settings.vapid_private_key:
@@ -35,7 +35,7 @@ def send_notification_to_household(
         "body": body,
         "icon": "/icons/icon-192.png",
         "badge": "/icons/badge-72.png",
-        "data": {"url": url},
+        "data": {"url": url, "alarm": alarm},
     })
 
     sent = 0
