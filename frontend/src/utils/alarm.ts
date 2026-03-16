@@ -60,7 +60,7 @@ const MELODIES: Record<string, Note[][]> = {
 // Default / custom: same as feeding
 MELODIES.custom = MELODIES.feeding
 
-function playMelody(ctx: AudioContext, phrases: Note[][], gap = 0.08, phraseGap = 0.35) {
+function playMelody(ctx: AudioContext, phrases: Note[][], gap = 0.08, phraseGap = 0.35): void {
   let t = ctx.currentTime
 
   phrases.forEach((phrase) => {
@@ -81,7 +81,6 @@ function playMelody(ctx: AudioContext, phrases: Note[][], gap = 0.08, phraseGap 
     t += phraseGap  // pause between repeated phrases
   })
 
-  return t  // total end time
 }
 
 export function playReminderAlarm(reminderType = 'custom') {
@@ -90,12 +89,8 @@ export function playReminderAlarm(reminderType = 'custom') {
     const phrases = MELODIES[reminderType] ?? MELODIES.custom
 
     const doPlay = () => {
-      const endTime = playMelody(ctx, phrases)
-      // Close and reset context after sound finishes so next call gets fresh context
-      setTimeout(() => {
-        ctx.close()
-        _ctx = null
-      }, (endTime - ctx.currentTime + 0.5) * 1000)
+      playMelody(ctx, phrases)
+      // Keep context alive — closing it would require a new user gesture to resume next time
     }
 
     if (ctx.state === 'suspended') {
