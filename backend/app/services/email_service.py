@@ -1,7 +1,4 @@
-import smtplib
 import logging
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -38,7 +35,26 @@ def send_otp_email(to_email: str, code: str, display_name: str) -> None:
     html = _build_html(display_name, code)
     subject = f"CryBaby login code: {code}"
 
-    # Try Resend first (works on Render — no port blocking)
+    # Brevo HTTP API (HTTPS — never blocked by hosting providers)
+    if settings.brevo_api_key:
+        import httpx
+        sender = settings.smtp_from or "geerath23091999@gmail.com"
+        resp = httpx.post(
+            "https://api.brevo.com/v3/smtp/email",
+            headers={"api-key": settings.brevo_api_key, "Content-Type": "application/json"},
+            json={
+                "sender": {"name": "CryBaby", "email": sender},
+                "to": [{"email": to_email}],
+                "subject": subject,
+                "htmlContent": html,
+            },
+            timeout=10,
+        )
+        resp.raise_for_status()
+        logger.info("OTP email sent via Brevo API to %s", _mask_email(to_email))
+        return
+
+    # Fallback: Resend (requires verified domain for arbitrary recipients)
     if settings.resend_api_key:
         import resend
         resend.api_key = settings.resend_api_key
@@ -51,17 +67,4 @@ def send_otp_email(to_email: str, code: str, display_name: str) -> None:
         logger.info("OTP email sent via Resend to %s", _mask_email(to_email))
         return
 
-    # Fallback: Gmail SMTP
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    sender = settings.smtp_from or settings.smtp_user
-    msg["From"] = f"CryBaby <{sender}>"
-    msg["To"] = to_email
-    msg.attach(MIMEText(html, "html"))
-
-    with smtplib.SMTP(settings.smtp_host, settings.smtp_port) as server:
-        server.starttls()
-        server.login(settings.smtp_user, settings.smtp_password)
-        server.sendmail(sender, to_email, msg.as_string())
-
-    logger.info("OTP email sent via SMTP to %s", _mask_email(to_email))
+    raise RuntimeError("No email provider configured. Set BREVO_API_KEY in environment.")
