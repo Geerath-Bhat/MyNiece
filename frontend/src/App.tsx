@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { playReminderAlarm } from '@/utils/alarm'
+import { playReminderAlarm, unlockAudio } from '@/utils/alarm'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { ToastContainer } from '@/components/ui/Toast'
 import { useAuthStore } from '@/store/authStore'
@@ -34,17 +34,24 @@ function ThemeSync() {
 function AlarmListener() {
   const lastPlayed = useRef(0)
   useEffect(() => {
-    if (!navigator.serviceWorker) return
+    // Unlock AudioContext on first user gesture so push-triggered alarms can play
+    const unlock = () => { unlockAudio(); window.removeEventListener('pointerdown', unlock) }
+    window.addEventListener('pointerdown', unlock)
+
+    if (!navigator.serviceWorker) return () => window.removeEventListener('pointerdown', unlock)
     const handler = (event: MessageEvent) => {
       if (event.data?.type !== 'REMINDER_ALARM') return
       // Debounce — don't play twice within 5 seconds
       const now = Date.now()
       if (now - lastPlayed.current < 5000) return
       lastPlayed.current = now
-      playReminderAlarm()
+      playReminderAlarm(event.data?.reminderType ?? 'custom')
     }
     navigator.serviceWorker.addEventListener('message', handler)
-    return () => navigator.serviceWorker.removeEventListener('message', handler)
+    return () => {
+      window.removeEventListener('pointerdown', unlock)
+      navigator.serviceWorker.removeEventListener('message', handler)
+    }
   }, [])
   return null
 }

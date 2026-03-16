@@ -15,7 +15,7 @@ self.addEventListener('push', (event) => {
     body?: string
     icon?: string
     badge?: string
-    data?: { url?: string; alarm?: boolean }
+    data?: { url?: string; alarm?: boolean; reminder_type?: string }
   }
 
   const isAlarm = data.data?.alarm === true
@@ -34,9 +34,10 @@ self.addEventListener('push', (event) => {
   const showPromise = self.registration.showNotification(title, options)
 
   // Tell any open app windows to play the alarm sound
+  const reminderType = data.data?.reminder_type ?? ''
   const notifyClients = isAlarm
     ? self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clients => {
-        clients.forEach(client => client.postMessage({ type: 'REMINDER_ALARM' }))
+        clients.forEach(client => client.postMessage({ type: 'REMINDER_ALARM', reminderType }))
       })
     : Promise.resolve()
 

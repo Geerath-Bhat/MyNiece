@@ -341,7 +341,7 @@ export default function RemindersPage() {
           <Bell className="w-5 h-5 text-indigo-400 shrink-0" />
           <p className="text-xs text-slate-400 flex-1">Push notifications activate once you allow them in Settings.</p>
           <button
-            onClick={playReminderAlarm}
+            onClick={() => playReminderAlarm('feeding')}
             title="Test alarm sound"
             className="flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 shrink-0 transition-colors"
           >

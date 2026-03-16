@@ -1,72 +1,109 @@
 /**
- * Plays a gentle baby-friendly chime using the Web Audio API.
- * No audio file needed — tones are generated programmatically.
+ * Reminder alarm sounds — different melody per reminder type.
+ * Uses Web Audio API (no audio files needed).
+ *
+ * Pre-unlock the AudioContext on first user gesture so it's ready
+ * when a push notification arrives (no gesture available then).
  */
-export function playReminderAlarm() {
+
+let _ctx: AudioContext | null = null
+
+function getCtx(): AudioContext {
+  if (!_ctx || _ctx.state === 'closed') {
+    _ctx = new AudioContext()
+  }
+  return _ctx
+}
+
+/** Call once on first user tap to unlock audio for background playback. */
+export function unlockAudio() {
   try {
-    const ctx = new AudioContext()
+    const ctx = getCtx()
+    if (ctx.state === 'suspended') ctx.resume()
+  } catch {
+    // not available
+  }
+}
 
-    const schedule = () => {
-      // Gentle 3-note ascending chime: C5 → E5 → G5 → C6
-      const notes = [523.25, 659.25, 783.99, 1046.5]
-      const noteDuration = 0.35
-      const gap = 0.08
+type Note = [freq: number, duration: number, volume: number]
 
-      notes.forEach((freq, i) => {
-        const startTime = ctx.currentTime + i * (noteDuration + gap)
+// ── Melodies ─────────────────────────────────────────────────────────────────
 
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
+const MELODIES: Record<string, Note[][]> = {
+  // Feeding: gentle ascending chime C5→E5→G5→C6 (twice)
+  feeding: [
+    [[523.25, 0.35, 0.40], [659.25, 0.35, 0.38], [783.99, 0.35, 0.36], [1046.5, 0.40, 0.42]],
+    [[523.25, 0.35, 0.35], [659.25, 0.35, 0.33], [783.99, 0.35, 0.31], [1046.5, 0.40, 0.36]],
+  ],
+  // Diaper: alert 3-note G5→C6→G5
+  diaper: [
+    [[783.99, 0.25, 0.45], [1046.5, 0.30, 0.50], [783.99, 0.30, 0.40]],
+    [[783.99, 0.25, 0.40], [1046.5, 0.30, 0.45], [783.99, 0.30, 0.35]],
+  ],
+  // Vitamin D: simple soft double chime C6→E6
+  vitamin_d: [
+    [[1046.5, 0.30, 0.35], [1318.5, 0.40, 0.30]],
+    [[1046.5, 0.30, 0.30], [1318.5, 0.40, 0.25]],
+  ],
+  // Massage: relaxing wave E5→G5→E5→C5
+  massage: [
+    [[659.25, 0.35, 0.30], [783.99, 0.35, 0.32], [659.25, 0.35, 0.28], [523.25, 0.45, 0.35]],
+    [[659.25, 0.35, 0.25], [783.99, 0.35, 0.27], [659.25, 0.35, 0.23], [523.25, 0.45, 0.30]],
+  ],
+  // Pre-feed exercise: ascending 4-note C5→E5→G5→A5
+  pre_feed_exercise: [
+    [[523.25, 0.28, 0.42], [659.25, 0.28, 0.42], [783.99, 0.28, 0.42], [880.00, 0.35, 0.45]],
+    [[523.25, 0.28, 0.38], [659.25, 0.28, 0.38], [783.99, 0.28, 0.38], [880.00, 0.35, 0.40]],
+  ],
+}
 
-        osc.connect(gain)
-        gain.connect(ctx.destination)
+// Default / custom: same as feeding
+MELODIES.custom = MELODIES.feeding
 
-        osc.type = 'sine'
-        osc.frequency.setValueAtTime(freq, startTime)
+function playMelody(ctx: AudioContext, phrases: Note[][], gap = 0.08, phraseGap = 0.35) {
+  let t = ctx.currentTime
 
-        // Soft attack + decay envelope
-        gain.gain.setValueAtTime(0, startTime)
-        gain.gain.linearRampToValueAtTime(0.4, startTime + 0.05)
-        gain.gain.exponentialRampToValueAtTime(0.001, startTime + noteDuration)
+  phrases.forEach((phrase) => {
+    phrase.forEach(([freq, dur, vol]) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(freq, t)
+      gain.gain.setValueAtTime(0, t)
+      gain.gain.linearRampToValueAtTime(vol, t + 0.05)
+      gain.gain.exponentialRampToValueAtTime(0.001, t + dur)
+      osc.start(t)
+      osc.stop(t + dur)
+      t += dur + gap
+    })
+    t += phraseGap  // pause between repeated phrases
+  })
 
-        osc.start(startTime)
-        osc.stop(startTime + noteDuration)
-      })
+  return t  // total end time
+}
 
-      // Play the chime twice with a short pause
-      const repeatDelay = notes.length * (noteDuration + gap) + 0.3
-      notes.forEach((freq, i) => {
-        const startTime = ctx.currentTime + repeatDelay + i * (noteDuration + gap)
+export function playReminderAlarm(reminderType = 'custom') {
+  try {
+    const ctx = getCtx()
+    const phrases = MELODIES[reminderType] ?? MELODIES.custom
 
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
-
-        osc.connect(gain)
-        gain.connect(ctx.destination)
-
-        osc.type = 'sine'
-        osc.frequency.setValueAtTime(freq, startTime)
-
-        gain.gain.setValueAtTime(0, startTime)
-        gain.gain.linearRampToValueAtTime(0.35, startTime + 0.05)
-        gain.gain.exponentialRampToValueAtTime(0.001, startTime + noteDuration)
-
-        osc.start(startTime)
-        osc.stop(startTime + noteDuration)
-      })
-
-      // Close context after sound finishes
-      const totalDuration = repeatDelay + notes.length * (noteDuration + gap) + 0.5
-      setTimeout(() => ctx.close(), totalDuration * 1000)
+    const doPlay = () => {
+      const endTime = playMelody(ctx, phrases)
+      // Close and reset context after sound finishes so next call gets fresh context
+      setTimeout(() => {
+        ctx.close()
+        _ctx = null
+      }, (endTime - ctx.currentTime + 0.5) * 1000)
     }
 
-    // Mobile: AudioContext may start suspended even on user gesture — resume first
     if (ctx.state === 'suspended') {
-      ctx.resume().then(schedule)
+      ctx.resume().then(doPlay)
     } else {
-      schedule()
+      doPlay()
     }
   } catch {
-    // AudioContext not available (e.g. SSR or restricted browser)
+    // AudioContext not available
   }
 }
