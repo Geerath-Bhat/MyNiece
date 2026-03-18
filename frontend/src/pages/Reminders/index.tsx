@@ -29,17 +29,25 @@ function formatDetail(r: Reminder): string {
 }
 
 function nextFiresAt(r: Reminder): string | null {
+  const fmtRemaining = (ms: number) => {
+    const totalMins = Math.round(ms / 60_000)
+    if (totalMins < 1) return 'now'
+    if (totalMins < 60) return `in ${totalMins}m`
+    const h = Math.floor(totalMins / 60)
+    const m = totalMins % 60
+    return m === 0 ? `in ${h}h` : `in ${h}h ${m}m`
+  }
+
   if (r.time_of_day) {
     const [h, m] = r.time_of_day.split(':').map(Number)
-    const now = new Date()
     const fire = new Date()
     fire.setHours(h, m, 0, 0)
-    if (fire <= now) fire.setDate(fire.getDate() + 1)
-    return `Next at ${fire.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+    if (fire <= new Date()) fire.setDate(fire.getDate() + 1)
+    return fmtRemaining(fire.getTime() - Date.now())
   }
   if (r.interval_minutes) {
     const fire = new Date(Date.now() + r.interval_minutes * 60_000)
-    return `Next ~${fire.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+    return `next ~${fire.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
   }
   return null
 }
