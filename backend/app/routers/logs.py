@@ -110,6 +110,8 @@ def create_log(
     log = ActivityLog(
         baby_id=body.baby_id, logged_by=user.id, type=body.type,
         timestamp=ts, diaper_type=body.diaper_type,
+        feed_type=body.feed_type, duration_minutes=body.duration_minutes,
+        volume_ml=body.volume_ml,
         custom_label=body.custom_label, notes=body.notes,
     )
     db.add(log)

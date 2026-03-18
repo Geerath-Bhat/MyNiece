@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { X, Milk, Timer, Droplets, Play, Square } from 'lucide-react'
 import { nowForInput, localInputToUTC } from '@/utils/dates'
 import { logsApi } from '@/api/logs'
+import { toast } from '@/components/ui/Toast'
 
 interface Props {
   babyId: string
@@ -64,8 +65,11 @@ export function FeedLogModal({ babyId, onLogged, onClose }: Props) {
         volume_ml: volumeMl ? parseFloat(volumeMl) : undefined,
         notes: notes.trim() || undefined,
       })
+      toast('Feed logged!', 'success')
       onLogged()
       onClose()
+    } catch {
+      toast('Failed to save feed — please try again', 'error')
     } finally {
       setSaving(false)
     }
