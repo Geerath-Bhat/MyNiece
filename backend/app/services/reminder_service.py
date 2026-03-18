@@ -11,7 +11,10 @@ def calc_next_fire_interval(from_dt: datetime, interval_minutes: int) -> datetim
 
 def calc_next_fire_fixed(time_of_day: dt_time, tz_str: str) -> datetime:
     """Next fire at a fixed time of day in the user's timezone. Returns UTC."""
-    tz = ZoneInfo(tz_str or "UTC")
+    try:
+        tz = ZoneInfo(tz_str or "UTC")
+    except Exception:
+        tz = ZoneInfo("UTC")
     now = datetime.now(tz)
     candidate = now.replace(
         hour=time_of_day.hour, minute=time_of_day.minute, second=0, microsecond=0

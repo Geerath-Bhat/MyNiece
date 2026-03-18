@@ -138,14 +138,14 @@ export default function ActivityLogPage() {
 
         {!canEdit && <ReadOnlyBanner />}
 
-        {/* Filter pills — always visible */}
-        <div className="flex gap-1.5 slide-up">
+        {/* Filter pills */}
+        <div className="flex gap-2 slide-up overflow-x-auto pb-0.5 scrollbar-none">
           {FILTER_TABS.map(t => (
             <button key={t.value} onClick={() => setFilter(t.value)}
-              className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${
+              className={`shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
                 filter === t.value
-                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
-                  : 'bg-white/5 text-slate-400 hover:bg-white/8 hover:text-slate-300'
+                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25'
+                  : 'bg-white/5 text-slate-400 hover:text-slate-200 border border-white/8'
               }`}>
               {t.label}
             </button>
@@ -172,10 +172,13 @@ export default function ActivityLogPage() {
             {grouped.map(group => (
               <div key={group.date}>
                 {/* Date label */}
-                <div className="flex items-center gap-3 mb-2.5">
-                  <span className="text-xs font-semibold text-slate-400">{group.label}</span>
-                  <div className="flex-1 h-px bg-white/5" />
-                  <span className="text-[10px] text-slate-600">{group.items.length} entries</span>
+                <div className="flex items-center gap-2.5 mb-3">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider shrink-0">{group.label}</span>
+                  <div className="flex-1 h-px" style={{ background: 'linear-gradient(to right, rgba(167,139,250,0.2), transparent)' }} />
+                  <span className="shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full text-indigo-400"
+                    style={{ background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.18)' }}>
+                    {group.items.length}
+                  </span>
                 </div>
 
                 {/* Log cards for this day */}
@@ -187,10 +190,11 @@ export default function ActivityLogPage() {
 
                     return (
                       <div key={log.id}
-                        className="card-surface flex items-start gap-3 px-3.5 py-3 group transition-all"
-                        style={{ borderLeft: `3px solid ${c.accent}` }}>
+                        className="glass flex items-start gap-3 px-3.5 py-3 group transition-all hover:shadow-lg"
+                        style={{ borderLeft: `3px solid ${c.accent}`, borderRadius: '14px', boxShadow: `0 2px 12px ${c.accent}22` }}>
                         {/* Icon */}
-                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${c.bg}`}>
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${c.bg}`}
+                          style={{ boxShadow: `0 0 12px ${c.accent}55` }}>
                           <Icon className={`w-4 h-4 ${c.color}`} />
                         </div>
 
