@@ -58,8 +58,16 @@ def send_notification_to_household(
             )
             sent += 1
         except Exception as e:
-            # 410 = subscription expired
-            if hasattr(e, "response") and e.response and e.response.status_code == 410:
+            # 410 = subscription expired — check response attr or string (pywebpush varies)
+            is_410 = False
+            try:
+                if hasattr(e, "response") and e.response is not None:
+                    is_410 = e.response.status_code == 410
+            except Exception:
+                pass
+            if not is_410:
+                is_410 = "410" in str(e)
+            if is_410:
                 expired.append(sub.id)
             else:
                 logger.error("Push failed for sub %s: %s", sub.id, e)
