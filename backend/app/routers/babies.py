@@ -109,3 +109,19 @@ def add_weight(
     db.commit()
     db.refresh(w)
     return w
+
+
+@router.delete("/{baby_id}/weight/{weight_id}", status_code=204)
+def delete_weight(
+    baby_id: str,
+    weight_id: str,
+    user: User = Depends(require_verified),
+    household_id: str = Depends(get_effective_household_id),
+    db: Session = Depends(get_db),
+):
+    _assert_baby(db, baby_id, household_id)
+    w = db.query(WeightLog).filter(WeightLog.id == weight_id, WeightLog.baby_id == baby_id).first()
+    if not w:
+        raise HTTPException(404)
+    db.delete(w)
+    db.commit()

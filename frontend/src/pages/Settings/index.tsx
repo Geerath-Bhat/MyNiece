@@ -11,6 +11,7 @@ import { babiesApi } from '@/api/babies'
 import { useNavigate } from 'react-router-dom'
 import { toast } from '@/components/ui/Toast'
 import { useCanEdit } from '@/hooks/useCanEdit'
+import { format } from 'date-fns'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
@@ -278,7 +279,7 @@ export default function SettingsPage() {
             <Row label="Name" value={user?.display_name} />
             <Row label="Email" value={user?.email} />
             <Row label="Timezone" value={user?.timezone} />
-            <Row label="Role" value={user?.role} />
+            <Row label="Role" value={user?.role?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} />
           </div>
         </Section>
       </div>
@@ -295,9 +296,9 @@ export default function SettingsPage() {
             />
             <div className="pt-1 border-t border-white/5">
               <Row label="Name" value={baby.name} />
-              <Row label="Date of Birth" value={new Date(baby.date_of_birth).toLocaleDateString()} />
+              <Row label="Date of Birth" value={format(new Date(baby.date_of_birth), 'dd MMM yyyy')} />
               <Row label="Age" value={babyAge} />
-              {baby.gender && <Row label="Gender" value={baby.gender} />}
+              {baby.gender && <Row label="Gender" value={baby.gender.charAt(0).toUpperCase() + baby.gender.slice(1)} />}
             </div>
           </Section>
         </div>

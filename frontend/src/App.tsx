@@ -17,6 +17,8 @@ import ExpensesPage from '@/pages/Expenses/index'
 import MorePage from '@/pages/More/index'
 import SettingsPage from '@/pages/Settings/index'
 import AdminPage from '@/pages/Admin/index'
+import GrowthPage from '@/pages/Growth/index'
+import HealthPage from '@/pages/Health/index'
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.token)
@@ -85,6 +87,8 @@ export default function App() {
           <Route path="/more" element={<MorePage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/admin" element={<AdminPage />} />
+          <Route path="/growth" element={<GrowthPage />} />
+          <Route path="/health" element={<HealthPage />} />
         </Route>
 
         {/* Catch-all */}

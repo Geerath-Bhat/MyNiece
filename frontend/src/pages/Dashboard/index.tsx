@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Bell, ChevronRight } from 'lucide-react'
+import { Bell, ChevronRight, Milk, Baby, Clock } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { parseUTC } from '@/utils/dates'
 import { useAuthStore } from '@/store/authStore'
@@ -14,6 +14,7 @@ import { NextFeedCard } from './NextFeedCard'
 import { QuickActions } from './QuickActions'
 import { RecentActivity } from './RecentActivity'
 import { LogPastEventModal } from './LogPastEventModal'
+import { FeedLogModal } from './FeedLogModal'
 import { WeightLogModal } from './WeightLogModal'
 import { UpcomingReminders } from './UpcomingReminders'
 import type { ActivityItem } from './RecentActivity'
@@ -44,6 +45,8 @@ function toActivityItem(log: ActivityLog): ActivityItem {
       : log.custom_label ?? 'Custom',
     timestamp: parseUTC(log.timestamp),
     note: log.notes ?? undefined,
+    feed_type: log.feed_type,
+    duration_minutes: log.duration_minutes,
   }
 }
 
@@ -78,8 +81,11 @@ export default function DashboardPage() {
   const [activity, setActivity] = useState<ActivityItem[]>([])
   const [feedCount, setFeedCount] = useState(0)
   const [diaperCount, setDiaperCount] = useState(0)
+  const [lastFeedType, setLastFeedType] = useState<string | undefined>()
+  const [lastFeedDuration, setLastFeedDuration] = useState<number | undefined>()
   const [setupDone, setSetupDone] = useState(false)
   const [showPastLog, setShowPastLog] = useState(false)
+  const [showFeedLog, setShowFeedLog] = useState(false)
   const [showWeightLog, setShowWeightLog] = useState(false)
 
   const loadLogs = useCallback(() => {
@@ -91,6 +97,9 @@ export default function DashboardPage() {
       const todayLogs = page.items.filter(l => new Date(l.timestamp) >= today)
       setFeedCount(todayLogs.filter(l => l.type === 'feed').length)
       setDiaperCount(todayLogs.filter(l => l.type === 'diaper').length)
+      const lastFeed = page.items.find(l => l.type === 'feed')
+      setLastFeedType(lastFeed?.feed_type ?? undefined)
+      setLastFeedDuration(lastFeed?.duration_minutes ?? undefined)
     }).catch(() => {})
   }, [baby])
 
@@ -106,15 +115,14 @@ export default function DashboardPage() {
     },
   })
 
-  async function logFeed() {
-    if (!baby) return
-    await logsApi.create({ baby_id: baby.id, type: 'feed' })
+  function logFeed() {
+    setShowFeedLog(true)
+  }
+
+  function onFeedLogged() {
     optimisticFeed()
-    setFeedCount(c => c + 1)
-    setActivity(prev => [
-      { id: String(Date.now()), type: 'feed', label: 'Fed baby', timestamp: new Date() },
-      ...prev,
-    ])
+    loadLogs()
+    refreshFeed()
   }
 
   async function logDiaper() {
@@ -167,7 +175,7 @@ export default function DashboardPage() {
             <button
               onClick={() => navigate('/log')}
               className="w-10 h-10 flex items-center justify-center rounded-2xl relative"
-              style={{ background: 'rgba(167,139,250,0.1)', border: '1px solid rgba(167,139,250,0.2)' }}
+              style={{ background: 'rgba(124,58,237,0.12)', border: '1px solid rgba(124,58,237,0.25)' }}
             >
               <Bell className="w-5 h-5 text-violet-300" />
               {activity.length > 0 && (
@@ -189,23 +197,35 @@ export default function DashboardPage() {
 
           {/* Today stats strip */}
           <div className="flex gap-2">
-            <div className="flex-1 rounded-2xl px-3 py-3 text-center"
-              style={{ background: 'rgba(124,58,237,0.16)', border: '1px solid rgba(167,139,250,0.22)' }}>
-              <p className="text-3xl font-bold text-violet-400 count-up leading-none">{feedCount}</p>
-              <p className="text-xs font-medium text-violet-300 mt-1">feeds</p>
-            </div>
-            <div className="flex-1 rounded-2xl px-3 py-3 text-center"
-              style={{ background: 'rgba(6,182,212,0.13)', border: '1px solid rgba(6,182,212,0.22)' }}>
-              <p className="text-3xl font-bold text-cyan-400 count-up leading-none">{diaperCount}</p>
-              <p className="text-xs font-medium text-cyan-300 mt-1">diapers</p>
-            </div>
-            <div className="flex-1 rounded-2xl px-3 py-3 text-center"
-              style={{ background: 'rgba(236,72,153,0.13)', border: '1px solid rgba(236,72,153,0.22)' }}>
-              <p className="text-3xl font-bold text-fuchsia-400 leading-none">
-                {intervalMinutes ? `${Math.round(intervalMinutes / 60)}h` : '—'}
-              </p>
-              <p className="text-xs font-medium text-fuchsia-300 mt-1">interval</p>
-            </div>
+            {[
+              {
+                icon: Milk, value: feedCount, label: 'feeds today',
+                bg: 'rgba(124,58,237,0.18)', border: 'rgba(167,139,250,0.25)',
+                iconBg: 'rgba(124,58,237,0.25)', color: '#a78bfa',
+              },
+              {
+                icon: Baby, value: diaperCount, label: 'diapers today',
+                bg: 'rgba(6,182,212,0.15)', border: 'rgba(6,182,212,0.25)',
+                iconBg: 'rgba(6,182,212,0.25)', color: '#67e8f9',
+              },
+              {
+                icon: Clock,
+                value: intervalMinutes ? `${Math.round(intervalMinutes / 60)}h` : '—',
+                label: 'interval',
+                bg: 'rgba(236,72,153,0.15)', border: 'rgba(236,72,153,0.25)',
+                iconBg: 'rgba(236,72,153,0.25)', color: '#f0abfc',
+              },
+            ].map(({ icon: Icon, value, label, bg, border, iconBg }) => (
+              <div key={label} className="flex-1 rounded-2xl px-2 py-3 flex flex-col items-center gap-1.5"
+                style={{ background: bg, border: `1px solid ${border}` }}>
+                <div className="w-7 h-7 rounded-xl flex items-center justify-center"
+                  style={{ background: iconBg }}>
+                  <Icon className="w-3.5 h-3.5 text-white" />
+                </div>
+                <p className="text-2xl font-bold leading-none tabular-nums text-white">{value}</p>
+                <p className="text-[10px] font-medium leading-tight text-center text-white opacity-75">{label}</p>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -214,8 +234,10 @@ export default function DashboardPage() {
       <NextFeedCard
         lastFedAt={lastFedAt ?? undefined}
         intervalMinutes={intervalMinutes}
-        onLogFeed={logFeed}
+        onLogFeed={() => setShowFeedLog(true)}
         canEdit={canEdit}
+        lastFeedType={lastFeedType}
+        lastFeedDuration={lastFeedDuration}
       />
 
       {/* ── Quick Log Grid ──────────────────────────────────────── */}
@@ -248,6 +270,13 @@ export default function DashboardPage() {
       {baby && <UpcomingReminders babyId={baby.id} />}
 
       {/* ── Modals ──────────────────────────────────────────────── */}
+      {showFeedLog && baby && (
+        <FeedLogModal
+          babyId={baby.id}
+          onLogged={onFeedLogged}
+          onClose={() => setShowFeedLog(false)}
+        />
+      )}
       {showPastLog && baby && (
         <LogPastEventModal
           babyId={baby.id}

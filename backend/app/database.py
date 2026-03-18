@@ -23,7 +23,7 @@ def get_db():
 
 def create_tables():
     """Create all tables (used in dev/SQLite). In production use Alembic."""
-    from app.models import household, user, baby, reminder, activity_log, push_subscription, expense, voice_command, sleep_session, weekly_insight, otp_code  # noqa: F401
+    from app.models import household, user, baby, reminder, activity_log, push_subscription, expense, voice_command, sleep_session, weekly_insight, otp_code, household_price, health  # noqa: F401
     Base.metadata.create_all(bind=engine)
     # Safe column additions for SQLite (ALTER TABLE ignores existing columns via try/except)
     _safe_add_columns()
@@ -33,6 +33,11 @@ def _safe_add_columns():
     """Add new columns to existing tables without Alembic (SQLite dev only)."""
     migrations = [
         "ALTER TABLE babies ADD COLUMN avatar_url TEXT",
+        "ALTER TABLE weight_logs ADD COLUMN height_cm NUMERIC(5,1)",
+        "ALTER TABLE weight_logs ADD COLUMN head_cm NUMERIC(4,1)",
+        "ALTER TABLE activity_logs ADD COLUMN feed_type TEXT",
+        "ALTER TABLE activity_logs ADD COLUMN duration_minutes INTEGER",
+        "ALTER TABLE activity_logs ADD COLUMN volume_ml NUMERIC(6,1)",
     ]
     with engine.connect() as conn:
         for sql in migrations:

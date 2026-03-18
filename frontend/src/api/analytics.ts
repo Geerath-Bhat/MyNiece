@@ -1,12 +1,23 @@
 import { api } from './client'
 
-export interface FeedDay { date: string; count: number; timestamps: string[] }
-export interface FeedingAnalytics { feeds: FeedDay[]; avg_interval_minutes: number | null; last_feed_at: string | null }
+export interface FeedDay {
+  date: string; count: number; timestamps: string[]
+  avg_duration_minutes?: number | null
+  total_duration_minutes?: number | null
+}
+export interface FeedingAnalytics {
+  feeds: FeedDay[]; avg_interval_minutes: number | null; last_feed_at: string | null
+  avg_duration_minutes?: number | null
+  feed_type_counts?: Record<string, number>
+}
 export interface DiaperDay { date: string; wet: number; dirty: number; both: number }
 export interface DiaperAnalytics { by_day: DiaperDay[]; total: number }
 export interface WeeklySummary {
   week_start: string; total_feeds: number; total_diapers: number
-  avg_feeding_interval_hours: number | null; last_weight_kg: number | null; weight_change_kg: number | null
+  avg_feeding_interval_hours: number | null
+  avg_feed_duration_minutes?: number | null
+  total_feed_duration_minutes?: number | null
+  last_weight_kg: number | null; weight_change_kg: number | null
 }
 export interface HeatmapPoint { hour: number; day_of_week: number; count: number }
 export interface ActivityHeatmap { heatmap: HeatmapPoint[] }

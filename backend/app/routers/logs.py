@@ -12,6 +12,53 @@ from app.services.reminder_service import get_feeding_reminder
 router = APIRouter(prefix="/logs", tags=["logs"])
 
 
+def _item_key(log: "ActivityLog") -> str:
+    """Map an activity log to a price item key."""
+    if log.type == "diaper":
+        return "diaper"
+    if log.type == "feed":
+        return "feed"
+    if log.type == "custom" and log.custom_label:
+        return f"custom:{log.custom_label.strip().lower()}"
+    return ""
+
+
+def _auto_expense(db: Session, log: "ActivityLog", user: "User") -> None:
+    """If a household price is set for this activity, create an expense entry."""
+    from app.models.household_price import HouseholdPrice
+    from app.models.expense import Expense
+    import datetime as dt
+
+    key = _item_key(log)
+    if not key:
+        return
+
+    price_row = db.query(HouseholdPrice).filter(
+        HouseholdPrice.household_id == user.household_id,
+        HouseholdPrice.item == key,
+    ).first()
+
+    if not price_row or float(price_row.price_inr) <= 0:
+        return
+
+    # Map activity type to expense category
+    category_map = {"diaper": "diapers", "feed": "formula"}
+    category = category_map.get(log.type, "other")
+
+    log_date = log.timestamp.date() if log.timestamp.tzinfo else log.timestamp.replace(tzinfo=dt.timezone.utc).date()
+
+    expense = Expense(
+        baby_id=log.baby_id,
+        user_id=user.id,
+        amount=float(price_row.price_inr),
+        category=category,
+        date=log_date,
+        note=f"Auto: {log.custom_label or log.type}",
+    )
+    db.add(expense)
+    db.commit()
+
+
 def _assert_baby(db: Session, baby_id: str, household_id: str) -> Baby:
     baby = db.query(Baby).filter(Baby.id == baby_id).first()
     if not baby or baby.household_id != household_id:
@@ -40,7 +87,15 @@ def list_logs(
         q = q.filter(ActivityLog.timestamp <= to_dt)
     total = q.count()
     items = q.order_by(ActivityLog.timestamp.desc()).offset(offset).limit(limit).all()
-    return {"total": total, "items": [ActivityLogOut.model_validate(i) for i in items]}
+    from app.models.user import User
+    user_ids = {i.logged_by for i in items if i.logged_by}
+    names = {u.id: u.display_name for u in db.query(User).filter(User.id.in_(user_ids)).all()} if user_ids else {}
+    out = []
+    for i in items:
+        o = ActivityLogOut.model_validate(i)
+        o.logged_by_name = names.get(i.logged_by) if i.logged_by else None
+        out.append(o)
+    return {"total": total, "items": out}
 
 
 @router.post("", response_model=ActivityLogOut, status_code=201)
@@ -65,6 +120,9 @@ def create_log(
     if body.type == "feed":
         from app.services.reminder_service import reschedule_after_feed
         reschedule_after_feed(db, body.baby_id, log.timestamp, user.timezone)
+
+    # Auto-expense: if a price is set for this activity, silently create an expense
+    _auto_expense(db, log, user)
 
     # Publish real-time event to SSE subscribers
     from app.services.event_bus import publish

@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, ScrollText, Bell, Mic,
-  Moon, BarChart2, DollarSign, Settings, LogOut, Shield, CheckCircle,
+  Moon, BarChart2, DollarSign, Settings, LogOut, Shield, CheckCircle, TrendingUp, Stethoscope,
 } from 'lucide-react'
 import { useAuthStore } from '@/store/authStore'
 import { useNavigate } from 'react-router-dom'
@@ -12,6 +12,8 @@ const links = [
   { to: '/log',       icon: ScrollText,      label: 'Activity',   end: false, adminOnly: false },
   { to: '/reminders', icon: Bell,            label: 'Reminders',  end: false, adminOnly: false },
   { to: '/voice',     icon: Mic,             label: 'Voice',      end: false, adminOnly: false },
+  { to: '/growth',    icon: TrendingUp,      label: 'Growth',     end: false, adminOnly: false },
+  { to: '/health',    icon: Stethoscope,     label: 'Health',     end: false, adminOnly: false },
   { to: '/sleep',     icon: Moon,            label: 'Sleep',      end: false, adminOnly: false },
   { to: '/analytics', icon: BarChart2,       label: 'Analytics',  end: false, adminOnly: false },
   { to: '/expenses',  icon: DollarSign,      label: 'Expenses',   end: false, adminOnly: false },

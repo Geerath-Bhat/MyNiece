@@ -7,6 +7,9 @@ class ActivityLogIn(BaseModel):
     type: str                         # feed | diaper | custom
     timestamp: datetime | None = None # defaults to now()
     diaper_type: str | None = None    # wet | dirty | both
+    feed_type: str | None = None      # breast_left | breast_right | both_breasts | bottle
+    duration_minutes: int | None = None
+    volume_ml: float | None = None
     custom_label: str | None = None
     notes: str | None = None
 
@@ -14,6 +17,7 @@ class ActivityLogIn(BaseModel):
 class ActivityLogOut(ActivityLogIn):
     id: str
     logged_by: str | None
+    logged_by_name: str | None = None
     timestamp: datetime
     created_at: datetime
     class Config: from_attributes = True
