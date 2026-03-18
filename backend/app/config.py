@@ -19,6 +19,9 @@ class Settings(BaseSettings):
     llm_model: str = ""               # auto-selected based on provider below
     llm_provider: str = ""            # auto-selected below
 
+    # Backend public URL — used to build absolute URLs in push payloads
+    api_base_url: str = "https://myniece.onrender.com"
+
     # Telegram notifications (free alternative to WhatsApp)
     telegram_bot_token: str = ""
     telegram_chat_id: str = ""

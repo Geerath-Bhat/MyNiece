@@ -15,7 +15,7 @@ self.addEventListener('push', (event) => {
     body?: string
     icon?: string
     badge?: string
-    data?: { url?: string; alarm?: boolean; reminder_type?: string; reminder_id?: string }
+    data?: { url?: string; alarm?: boolean; reminder_type?: string; reminder_id?: string; dismiss_url?: string }
   }
 
   const isAlarm = data.data?.alarm === true
@@ -26,7 +26,7 @@ self.addEventListener('push', (event) => {
     body: data.body ?? '',
     icon: data.icon ?? '/icons/icon-192.png',
     badge: data.badge ?? '/icons/icon-192.png',
-    data: { url: data.data?.url ?? '/', alarm: isAlarm, reminderType, reminderId },
+    data: { url: data.data?.url ?? '/', alarm: isAlarm, reminderType, reminderId, dismissUrl: data.data?.dismiss_url ?? '' },
     vibrate: isAlarm
       ? [600, 200, 600, 200, 600, 400, 1000]  // strong repeated pattern for alarms
       : [200, 100, 200],
@@ -56,11 +56,12 @@ self.addEventListener('notificationclick', (event) => {
   const isAlarm = event.notification.data?.alarm === true
   const rType = (event.notification.data?.reminderType as string) ?? 'custom'
   const rId = (event.notification.data?.reminderId as string) ?? ''
+  const dismissUrl = (event.notification.data?.dismissUrl as string) ?? ''
 
   // Dismiss button — tell backend to cancel repeat pushes, don't open app
   if (event.action === 'dismiss') {
-    if (rId) {
-      fetch(`/api/push/alarms/dismiss?reminder_id=${rId}`, { method: 'POST' }).catch(() => {})
+    if (rId && dismissUrl) {
+      fetch(`${dismissUrl}?reminder_id=${rId}`, { method: 'POST' }).catch(() => {})
     }
     return
   }

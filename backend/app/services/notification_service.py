@@ -36,7 +36,13 @@ def send_notification_to_household(
         "body": body,
         "icon": "/icons/icon-192.png",
         "badge": "/icons/badge-72.png",
-        "data": {"url": url, "alarm": alarm, "reminder_type": reminder_type, "reminder_id": reminder_id},
+        "data": {
+            "url": url,
+            "alarm": alarm,
+            "reminder_type": reminder_type,
+            "reminder_id": reminder_id,
+            "dismiss_url": f"{settings.api_base_url}/api/push/alarms/dismiss",
+        },
     })
 
     sent = 0
