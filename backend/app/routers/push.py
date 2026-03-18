@@ -41,6 +41,14 @@ def unsubscribe(sub_id: str, user: User = Depends(get_current_user), db: Session
     db.commit()
 
 
+@router.post("/alarms/dismiss")
+def dismiss_alarm(reminder_id: str):
+    """No auth required — called directly from the service worker notificationclick handler."""
+    from app.scheduler.jobs import dismiss_alarm as _dismiss
+    _dismiss(reminder_id)
+    return {"ok": True}
+
+
 @router.post("/test")
 def test_push(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     from app.services.notification_service import send_notification_to_household

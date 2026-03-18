@@ -15,21 +15,26 @@ self.addEventListener('push', (event) => {
     body?: string
     icon?: string
     badge?: string
-    data?: { url?: string; alarm?: boolean; reminder_type?: string }
+    data?: { url?: string; alarm?: boolean; reminder_type?: string; reminder_id?: string }
   }
 
   const isAlarm = data.data?.alarm === true
   const reminderType = data.data?.reminder_type ?? ''
+  const reminderId = data.data?.reminder_id ?? ''
   const title = data.title ?? 'CryBaby'
   const options = {
     body: data.body ?? '',
     icon: data.icon ?? '/icons/icon-192.png',
     badge: data.badge ?? '/icons/icon-192.png',
-    data: { url: data.data?.url ?? '/', alarm: isAlarm, reminderType },
+    data: { url: data.data?.url ?? '/', alarm: isAlarm, reminderType, reminderId },
     vibrate: isAlarm
-      ? [300, 100, 300, 100, 300, 200, 500]  // strong pattern for reminders
+      ? [600, 200, 600, 200, 600, 400, 1000]  // strong repeated pattern for alarms
       : [200, 100, 200],
-    requireInteraction: isAlarm,              // reminder stays until dismissed
+    requireInteraction: isAlarm,
+    // Same tag per reminder = each repeat replaces the old notification but re-triggers sound
+    tag: isAlarm ? `alarm-${reminderId}` : 'crybaby-notif',
+    renotify: isAlarm,
+    actions: isAlarm ? [{ action: 'dismiss', title: '✓ Dismiss alarm' }] : [],
   } as NotificationOptions
 
   const showPromise = self.registration.showNotification(title, options)
@@ -50,6 +55,15 @@ self.addEventListener('notificationclick', (event) => {
   const targetUrl = (event.notification.data?.url as string) ?? '/'
   const isAlarm = event.notification.data?.alarm === true
   const rType = (event.notification.data?.reminderType as string) ?? 'custom'
+  const rId = (event.notification.data?.reminderId as string) ?? ''
+
+  // Dismiss button — tell backend to cancel repeat pushes, don't open app
+  if (event.action === 'dismiss') {
+    if (rId) {
+      fetch(`/api/push/alarms/dismiss?reminder_id=${rId}`, { method: 'POST' }).catch(() => {})
+    }
+    return
+  }
 
   event.waitUntil(
     self.clients
