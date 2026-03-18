@@ -2,7 +2,12 @@ import { api } from './client'
 
 export interface ActivityLog {
   id: string; baby_id: string; type: string; timestamp: string
-  diaper_type?: string; custom_label?: string; notes?: string; logged_by?: string
+  diaper_type?: string
+  feed_type?: string        // breast_left | breast_right | both_breasts | bottle
+  duration_minutes?: number
+  volume_ml?: number
+  custom_label?: string; notes?: string
+  logged_by?: string; logged_by_name?: string
 }
 export interface LastFeed {
   timestamp: string; minutes_since: number; next_due_at: string
@@ -15,7 +20,9 @@ export const logsApi = {
 
   create: (d: {
     baby_id: string; type: string; timestamp?: string
-    diaper_type?: string; custom_label?: string; notes?: string
+    diaper_type?: string
+    feed_type?: string; duration_minutes?: number; volume_ml?: number
+    custom_label?: string; notes?: string
   }) => api.post<ActivityLog>('/logs', d).then(r => r.data),
 
   lastFeed: (baby_id: string) => api.get<LastFeed>('/logs/last-feed', { params: { baby_id } }).then(r => r.data),

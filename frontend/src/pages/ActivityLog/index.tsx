@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Milk, Baby, Sparkles, Filter, Loader2, Trash2, AlertTriangle, X } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
-import { parseUTC } from '@/utils/dates'
+import { Milk, Baby, Sparkles, Loader2, Trash2, AlertTriangle, X, ScrollText } from 'lucide-react'
+import { formatDistanceToNow, format, isToday, isYesterday } from 'date-fns'
+import { parseUTC, fmtDateTime } from '@/utils/dates'
 import { logsApi } from '@/api/logs'
 import type { ActivityLog } from '@/api/logs'
 import { useBaby } from '@/hooks/useBaby'
@@ -12,12 +12,24 @@ import { LiveDot } from '@/components/ui/LiveDot'
 import { ReadOnlyBanner } from '@/components/ui/ReadOnlyBanner'
 
 const cfg = {
-  feed:   { icon: Milk,     color: 'text-violet-400',  bg: 'bg-violet-500/10',  accent: 'rgba(124,58,237,0.35)'  },
-  diaper: { icon: Baby,     color: 'text-cyan-400',    bg: 'bg-cyan-500/10',    accent: 'rgba(6,182,212,0.35)'   },
-  custom: { icon: Sparkles, color: 'text-fuchsia-400', bg: 'bg-fuchsia-500/10', accent: 'rgba(217,70,239,0.35)'  },
+  feed:   { icon: Milk,     color: 'text-violet-400',  bg: 'bg-violet-500/10',  accent: 'rgba(124,58,237,0.45)'  },
+  diaper: { icon: Baby,     color: 'text-cyan-400',    bg: 'bg-cyan-500/10',    accent: 'rgba(6,182,212,0.45)'   },
+  custom: { icon: Sparkles, color: 'text-fuchsia-400', bg: 'bg-fuchsia-500/10', accent: 'rgba(217,70,239,0.45)'  },
 }
 
-const TYPES = ['all', 'feed', 'diaper', 'custom']
+const FILTER_TABS = [
+  { value: 'all',    label: 'All'     },
+  { value: 'feed',   label: 'Feeds'   },
+  { value: 'diaper', label: 'Diapers' },
+  { value: 'custom', label: 'Custom'  },
+]
+
+const FEED_TYPE_LABELS: Record<string, string> = {
+  breast_left:  '🤱 Left',
+  breast_right: '🤱 Right',
+  both_breasts: '🤱 Both',
+  bottle:       '🍼 Bottle',
+}
 
 function logLabel(log: ActivityLog): string {
   if (log.type === 'feed') return 'Fed baby'
@@ -25,12 +37,16 @@ function logLabel(log: ActivityLog): string {
   return log.custom_label ?? 'Custom'
 }
 
+function dayLabel(date: Date): string {
+  if (isToday(date)) return 'Today'
+  if (isYesterday(date)) return 'Yesterday'
+  return format(date, 'EEEE, dd MMM')
+}
+
 // ── Delete confirmation modal ─────────────────────────────────────────────────
 
 function DeleteConfirmModal({ log, onConfirm, onCancel }: {
-  log: ActivityLog
-  onConfirm: () => void
-  onCancel: () => void
+  log: ActivityLog; onConfirm: () => void; onCancel: () => void
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm px-4" onClick={onCancel}>
@@ -39,22 +55,18 @@ function DeleteConfirmModal({ log, onConfirm, onCancel }: {
           <div className="w-10 h-10 rounded-xl bg-red-500/15 flex items-center justify-center shrink-0">
             <AlertTriangle className="w-5 h-5 text-red-400" />
           </div>
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-semibold text-white">Delete this entry?</p>
             <p className="text-xs text-slate-400 mt-0.5">{logLabel(log)} · {formatDistanceToNow(parseUTC(log.timestamp), { addSuffix: true })}</p>
           </div>
-          <button onClick={onCancel} className="ml-auto text-slate-600 hover:text-slate-400">
+          <button onClick={onCancel} className="text-slate-600 hover:text-slate-400">
             <X className="w-4 h-4" />
           </button>
         </div>
-        <p className="text-xs text-slate-500">This will permanently remove the log from the database. This cannot be undone.</p>
+        <p className="text-xs text-slate-500">This will permanently remove the log. This cannot be undone.</p>
         <div className="flex gap-3">
-          <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl bg-white/5 text-slate-300 text-sm font-medium hover:bg-white/10 transition-colors">
-            Cancel
-          </button>
-          <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-500 transition-colors">
-            Yes, Delete
-          </button>
+          <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl bg-white/5 text-slate-300 text-sm font-medium">Cancel</button>
+          <button onClick={onConfirm} className="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-sm font-semibold">Yes, Delete</button>
         </div>
       </div>
     </div>
@@ -69,26 +81,21 @@ export default function ActivityLogPage() {
   const [logs, setLogs] = useState<ActivityLog[]>([])
   const [filter, setFilter] = useState('all')
   const [loading, setLoading] = useState(true)
-  const [showFilter, setShowFilter] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<ActivityLog | null>(null)
   const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (!baby) return
     setLoading(true)
-    logsApi.list(baby.id, { type: filter === 'all' ? undefined : filter, limit: 30 })
+    logsApi.list(baby.id, { type: filter === 'all' ? undefined : filter, limit: 50 })
       .then(p => setLogs(p.items))
       .finally(() => setLoading(false))
   }, [baby, filter])
 
-  // Real-time SSE: prepend new activity_log events from other caregivers
   const onEvent = useCallback((event: FeedEvent) => {
     if (event.type !== 'activity_log') return
     const incoming = event.payload as ActivityLog
-    setLogs(prev => {
-      if (prev.some(l => l.id === incoming.id)) return prev
-      return [incoming, ...prev]
-    })
+    setLogs(prev => prev.some(l => l.id === incoming.id) ? prev : [incoming, ...prev])
   }, [])
 
   const { connected } = useActivityFeed({ babyId: baby?.id ?? null, onEvent })
@@ -105,68 +112,137 @@ export default function ActivityLogPage() {
     }
   }
 
+  // Group logs by calendar day
+  const grouped: { label: string; date: string; items: ActivityLog[] }[] = []
+  for (const log of logs) {
+    const d = format(parseUTC(log.timestamp), 'yyyy-MM-dd')
+    const last = grouped[grouped.length - 1]
+    if (last?.date === d) {
+      last.items.push(log)
+    } else {
+      grouped.push({ label: dayLabel(parseUTC(log.timestamp)), date: d, items: [log] })
+    }
+  }
+
   return (
     <>
       <div className="flex flex-col gap-4">
+
+        {/* Header */}
         <div className="flex items-center justify-between slide-up">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <h1 className="text-xl font-bold text-white">Activity Log</h1>
             <LiveDot connected={connected} />
           </div>
-          <button onClick={() => setShowFilter(f => !f)}
-            className="glass px-3 py-2 flex items-center gap-1.5 rounded-xl text-sm text-slate-300">
-            <Filter className="w-4 h-4" /> Filter
-          </button>
         </div>
 
         {!canEdit && <ReadOnlyBanner />}
 
-        {showFilter && (
-          <div className="flex gap-2 slide-up">
-            {TYPES.map(t => (
-              <button key={t} onClick={() => setFilter(t)}
-                className={`flex-1 py-2 rounded-xl text-xs font-medium capitalize transition-all ${filter === t ? 'bg-indigo-600 text-white' : 'glass text-slate-400'}`}>
-                {t}
-              </button>
-            ))}
-          </div>
-        )}
+        {/* Filter pills — always visible */}
+        <div className="flex gap-1.5 slide-up">
+          {FILTER_TABS.map(t => (
+            <button key={t.value} onClick={() => setFilter(t.value)}
+              className={`flex-1 py-2 rounded-xl text-xs font-semibold transition-all ${
+                filter === t.value
+                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
+                  : 'bg-white/5 text-slate-400 hover:bg-white/8 hover:text-slate-300'
+              }`}>
+              {t.label}
+            </button>
+          ))}
+        </div>
 
+        {/* Content */}
         {loading ? (
-          <div className="flex justify-center mt-10"><Loader2 className="w-6 h-6 text-indigo-400 animate-spin" /></div>
+          <div className="flex justify-center mt-10">
+            <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
+          </div>
         ) : logs.length === 0 ? (
-          <div className="glass p-8 text-center text-slate-500 text-sm slide-up-1">
-            No activity yet — log your first feed from the dashboard
+          <div className="glass p-10 flex flex-col items-center gap-3 slide-up-1">
+            <div className="w-14 h-14 rounded-2xl bg-slate-800/60 flex items-center justify-center">
+              <ScrollText className="w-7 h-7 text-slate-600" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm font-medium text-slate-400">No activity yet</p>
+              <p className="text-xs text-slate-600 mt-1">Log your first feed from the dashboard</p>
+            </div>
           </div>
         ) : (
-          <div className="flex flex-col gap-2 slide-up-1">
-            {logs.map(log => {
-              const c = cfg[log.type as keyof typeof cfg] ?? cfg.custom
-              const Icon = c.icon
-              return (
-                <div key={log.id} className="glass flex items-center gap-3 px-4 py-3.5 group"
-                  style={{ borderLeft: `3px solid ${c.accent}` }}>
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${c.bg}`}>
-                    <Icon className={`w-5 h-5 ${c.color}`} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-slate-200">{logLabel(log)}</p>
-                    {log.notes && <p className="text-xs text-slate-500 truncate">{log.notes}</p>}
-                  </div>
-                  <span className="text-xs text-slate-500 shrink-0">
-                    {formatDistanceToNow(parseUTC(log.timestamp), { addSuffix: true })}
-                  </span>
-                  {canEdit && (
-                    <button
-                      onClick={() => setPendingDelete(log)}
-                      className="opacity-0 group-hover:opacity-100 ml-1 text-slate-400 hover:text-red-400 transition-all"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  )}
+          <div className="flex flex-col gap-5 slide-up-1">
+            {grouped.map(group => (
+              <div key={group.date}>
+                {/* Date label */}
+                <div className="flex items-center gap-3 mb-2.5">
+                  <span className="text-xs font-semibold text-slate-400">{group.label}</span>
+                  <div className="flex-1 h-px bg-white/5" />
+                  <span className="text-[10px] text-slate-600">{group.items.length} entries</span>
                 </div>
-              )
-            })}
+
+                {/* Log cards for this day */}
+                <div className="flex flex-col gap-2">
+                  {group.items.map(log => {
+                    const c = cfg[log.type as keyof typeof cfg] ?? cfg.custom
+                    const Icon = c.icon
+                    const ftLabel = log.type === 'feed' && log.feed_type ? FEED_TYPE_LABELS[log.feed_type] : null
+
+                    return (
+                      <div key={log.id}
+                        className="card-surface flex items-start gap-3 px-3.5 py-3 group transition-all"
+                        style={{ borderLeft: `3px solid ${c.accent}` }}>
+                        {/* Icon */}
+                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${c.bg}`}>
+                          <Icon className={`w-4 h-4 ${c.color}`} />
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-sm font-medium text-slate-200">{logLabel(log)}</p>
+                            {ftLabel && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold"
+                                style={{ background: 'rgba(124,58,237,0.18)', color: '#c4b5fd' }}>
+                                {ftLabel}
+                              </span>
+                            )}
+                            {log.duration_minutes && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold"
+                                style={{ background: 'rgba(236,72,153,0.15)', color: '#f9a8d4' }}>
+                                {log.duration_minutes}m
+                              </span>
+                            )}
+                            {log.volume_ml && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-md font-semibold"
+                                style={{ background: 'rgba(6,182,212,0.15)', color: '#67e8f9' }}>
+                                {log.volume_ml}ml
+                              </span>
+                            )}
+                          </div>
+                          {log.notes && <p className="text-xs text-slate-500 truncate mt-0.5">{log.notes}</p>}
+                          {/* Hover: exact time + logged by */}
+                          <p className="text-[11px] text-slate-600 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            {fmtDateTime(log.timestamp)}
+                            {log.logged_by_name && <span className="text-slate-500"> · {log.logged_by_name}</span>}
+                          </p>
+                        </div>
+
+                        {/* Time + actions */}
+                        <div className="flex flex-col items-end gap-1.5 shrink-0">
+                          <span className="text-[11px] text-slate-500 group-hover:opacity-0 transition-opacity">
+                            {format(parseUTC(log.timestamp), 'HH:mm')}
+                          </span>
+                          {canEdit && (
+                            <button onClick={() => setPendingDelete(log)}
+                              className="opacity-0 group-hover:opacity-100 text-slate-600 hover:text-red-400 transition-all">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

@@ -6,12 +6,16 @@ class FeedDayOut(BaseModel):
     date: date
     count: int
     timestamps: list[datetime]
+    avg_duration_minutes: float | None = None
+    total_duration_minutes: float | None = None
 
 
 class FeedingAnalyticsOut(BaseModel):
     feeds: list[FeedDayOut]
     avg_interval_minutes: float | None
     last_feed_at: datetime | None
+    avg_duration_minutes: float | None = None
+    feed_type_counts: dict[str, int] = {}
 
 
 class DiaperDayOut(BaseModel):
@@ -31,6 +35,8 @@ class WeeklySummaryOut(BaseModel):
     total_feeds: int
     total_diapers: int
     avg_feeding_interval_hours: float | None
+    avg_feed_duration_minutes: float | None = None
+    total_feed_duration_minutes: float | None = None
     last_weight_kg: float | None
     weight_change_kg: float | None
 

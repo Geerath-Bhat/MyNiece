@@ -5,6 +5,8 @@ from pydantic import BaseModel
 class WeightLogIn(BaseModel):
     date: date
     weight_kg: float
+    height_cm: float | None = None
+    head_cm: float | None = None
     note: str | None = None
 
 

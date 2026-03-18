@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import settings
 from app.database import create_tables
 from app.scheduler.setup import start_scheduler, shutdown_scheduler
-from app.routers import auth, babies, reminders, logs, voice, push, expenses, analytics, sleep, sse, admin, uploads
+from app.routers import auth, babies, reminders, logs, voice, push, expenses, analytics, sleep, sse, admin, uploads, prices, health
 from app.services import event_bus
 
 
@@ -35,7 +35,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for router_module in [auth, babies, reminders, logs, voice, push, expenses, analytics, sleep, sse, admin, uploads]:
+for router_module in [auth, babies, reminders, logs, voice, push, expenses, analytics, sleep, sse, admin, uploads, prices, health]:
     app.include_router(router_module.router, prefix="/api")
 
 # Serve uploaded avatar files as static files

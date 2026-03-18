@@ -61,6 +61,7 @@ html[data-theme="dark"] {
 
 /* Text — slate scale */
 html:not([data-theme="dark"]) .text-white     { color: var(--color-text-primary); }
+html:not([data-theme="dark"]) .group:hover .group-hover\:text-white { color: var(--color-text-primary); }
 html:not([data-theme="dark"]) .text-slate-200 { color: var(--color-text-primary); }
 html:not([data-theme="dark"]) .text-slate-300 { color: var(--color-text-secondary); }
 html:not([data-theme="dark"]) .text-slate-400 { color: var(--color-text-muted); }
@@ -333,6 +334,7 @@ html:not([data-theme="dark"]) body {
 
 /* ── Missing light-mode accent overrides ──────────────────── */
 html:not([data-theme="dark"]) .text-fuchsia-300 { color: #a21caf; }
+html:not([data-theme="dark"]) .text-violet-200  { color: #5b21b6; }
 html:not([data-theme="dark"]) .text-violet-300  { color: #6d28d9; }
 html:not([data-theme="dark"]) .text-amber-300   { color: #b45309; }
 html:not([data-theme="dark"]) .text-cyan-300    { color: #0369a1; }
@@ -340,6 +342,7 @@ html:not([data-theme="dark"]) .text-blue-300    { color: #1d4ed8; }
 html:not([data-theme="dark"]) .text-purple-300  { color: #6d28d9; }
 html:not([data-theme="dark"]) .text-green-300   { color: #047857; }
 html:not([data-theme="dark"]) .text-yellow-300  { color: #b45309; }
+html:not([data-theme="dark"]) .text-rose-300    { color: #be123c; }
 html:not([data-theme="dark"]) .text-rose-400    { color: #be123c; }
 html:not([data-theme="dark"]) .text-pink-300    { color: #be185d; }
 
@@ -385,3 +388,16 @@ html[data-theme="dark"] .glass-hero::before { opacity: 0.45; }
 /* ── SVG ring track — theme-aware ────────────────────────── */
 .ring-track { stroke: rgba(124,58,237,0.20); }
 html[data-theme="dark"] .ring-track { stroke: rgba(167,139,250,0.10); }
+
+/* ── Card surface — theme-aware list card base ───────────── */
+/* Use this instead of hardcoded rgba(255,255,255,0.03) inline styles */
+.card-surface {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  transition: background 0.25s ease, border-color 0.25s ease;
+}
+html[data-theme="dark"] .card-surface {
+  background: rgba(255,255,255,0.03);
+  border-color: rgba(255,255,255,0.06);
+}
