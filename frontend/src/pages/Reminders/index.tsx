@@ -130,7 +130,8 @@ function ReminderModal({ babyId, existing, existingLabels = [], onSaved, onClose
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-sm" onClick={onClose}>
+      <div className="flex min-h-full items-center justify-center p-4">
       <div
         className="w-full max-w-md modal-surface rounded-3xl p-6 flex flex-col gap-4"
         onClick={e => e.stopPropagation()}
@@ -242,6 +243,7 @@ function ReminderModal({ babyId, existing, existingLabels = [], onSaved, onClose
           {saving && <Loader2 className="w-4 h-4 animate-spin" />}
           {isEdit ? 'Save Changes' : 'Create Reminder'}
         </button>
+      </div>
       </div>
     </div>
   )
