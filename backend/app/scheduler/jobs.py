@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
 _dismissed_alarms: set[str] = set()
 
 # How many repeat pushes to send and how far apart (30s × 5 = 2.5 min extra after the first)
-_ALARM_REPEAT_COUNT = 5
-_ALARM_REPEAT_INTERVAL = 30  # seconds
+_ALARM_REPEAT_COUNT = 20
+_ALARM_REPEAT_INTERVAL = 15  # seconds
 
 
 def dismiss_alarm(reminder_id: str) -> None:
