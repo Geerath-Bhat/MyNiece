@@ -79,9 +79,9 @@ export function FeedLogModal({ babyId, onLogged, onClose }: Props) {
   const inputCls = 'bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500/50 w-full'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm"
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
       onClick={onClose}>
-      <div className="w-full max-w-md modal-surface rounded-t-3xl sm:rounded-3xl p-6 flex flex-col gap-4"
+      <div className="w-full max-w-md modal-surface rounded-3xl p-6 flex flex-col gap-4"
         onClick={e => e.stopPropagation()}>
 
         {/* Header */}
